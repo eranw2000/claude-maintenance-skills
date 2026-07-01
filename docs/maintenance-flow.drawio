@@ -1,0 +1,43 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="maintenance-skills" id="maintflow">
+    <mxGraphModel dx="1400" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1560" pageHeight="720" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="claude-maintenance-skills : keep a project's knowledge and your setup healthy" style="text;html=1;fontSize=20;fontStyle=1;fontColor=#0050b3;align=left;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="40" y="20" width="1000" height="36" as="geometry"/></mxCell>
+
+        <mxCell id="legend" value="Legend&#10;• green = when to reach for it&#10;• blue = skill (read-only orientation, or edits its own notes)&#10;• orange = output artifact&#10;Three independent utilities, used at different points in a project's life." style="rounded=0;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=0;verticalAlign=top;align=left;spacingLeft=10;spacingTop=6;whiteSpace=wrap;html=1;fontFamily=Helvetica;" vertex="1" parent="1"><mxGeometry x="1150" y="70" width="380" height="150" as="geometry"/></mxCell>
+
+        <!-- STAGE 1: project-status -->
+        <mxCell id="s1" value="project-status: sit back down on a project" style="rounded=0;fillColor=#fafafa;strokeColor=#0050b3;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=6;dashed=1;strokeWidth=2;html=1;" vertex="1" parent="1"><mxGeometry x="40" y="250" width="340" height="440" as="geometry"/></mxCell>
+        <mxCell id="s1t" value="returning after time away&#10;(&quot;where was I?&quot;)" style="ellipse;fillColor=#d5e8d4;strokeColor=#82b366;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="70" y="290" width="280" height="60" as="geometry"/></mxCell>
+        <mxCell id="s1p" value="project-status&#10;gather: git state · open PRs · deploy health · local containers · project memory" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="70" y="390" width="280" height="110" as="geometry"/></mxCell>
+        <mxCell id="s1o" value="&quot;state of the project now&quot;&#10;+ one suggested next action" style="shape=document;fillColor=#ffe6cc;strokeColor=#d79b00;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="70" y="540" width="280" height="80" as="geometry"/></mxCell>
+
+        <!-- STAGE 2: split-claude-md -->
+        <mxCell id="s2" value="split-claude-md: keep the notes lean" style="rounded=0;fillColor=#fafafa;strokeColor=#0050b3;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=6;dashed=1;strokeWidth=2;html=1;" vertex="1" parent="1"><mxGeometry x="410" y="250" width="360" height="440" as="geometry"/></mxCell>
+        <mxCell id="s2t" value="CLAUDE.md bloated&#10;(over ~50KB, always-loaded)" style="ellipse;fillColor=#d5e8d4;strokeColor=#82b366;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="445" y="290" width="290" height="60" as="geometry"/></mxCell>
+        <mxCell id="s2p" value="split-claude-md&#10;A: rotate old decisions → monthly archives&#10;B: consolidate repeated gotchas&#10;C: extract stable reference files" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="445" y="390" width="290" height="110" as="geometry"/></mxCell>
+        <mxCell id="s2o" value="lean CLAUDE.md + archive/ + ARCHITECTURE.md &amp; friends (pointer stubs left behind)" style="shape=document;fillColor=#ffe6cc;strokeColor=#d79b00;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="445" y="540" width="290" height="80" as="geometry"/></mxCell>
+
+        <!-- STAGE 3: salvage -->
+        <mxCell id="s3" value="salvage-session-archives: recover lost context" style="rounded=0;fillColor=#fafafa;strokeColor=#0050b3;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=6;dashed=1;strokeWidth=2;html=1;" vertex="1" parent="1"><mxGeometry x="800" y="250" width="360" height="440" as="geometry"/></mxCell>
+        <mxCell id="s3t" value="old session transcripts left over" style="ellipse;fillColor=#d5e8d4;strokeColor=#82b366;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="835" y="290" width="290" height="60" as="geometry"/></mxCell>
+        <mxCell id="s3p" value="salvage-session-archives&#10;mine transcripts → extract durable facts → dedup vs CLAUDE.md → append new → delete leftovers (asks first)" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="835" y="390" width="290" height="110" as="geometry"/></mxCell>
+        <mxCell id="s3o" value="enriched CLAUDE.md + reclaimed disk" style="shape=document;fillColor=#ffe6cc;strokeColor=#d79b00;html=1;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="835" y="540" width="290" height="80" as="geometry"/></mxCell>
+
+        <!-- shared store -->
+
+        <!-- edges -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;html=1;" edge="1" parent="1" source="s1t" target="s1p"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeColor=#0050b3;strokeWidth=2;html=1;" edge="1" parent="1" source="s1p" target="s1o"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;html=1;" edge="1" parent="1" source="s2t" target="s2p"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeColor=#0050b3;strokeWidth=2;html=1;" edge="1" parent="1" source="s2p" target="s2o"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeColor=#82b366;strokeWidth=2;html=1;" edge="1" parent="1" source="s3t" target="s3p"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;strokeColor=#0050b3;strokeWidth=2;html=1;" edge="1" parent="1" source="s3p" target="s3o"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <!-- store relations -->
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

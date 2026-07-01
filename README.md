@@ -4,6 +4,12 @@ Three Claude Code skills for keeping a project's knowledge and your Claude Code 
 
 Each skill is a self-contained directory (a `SKILL.md`). Claude can invoke one when its description matches what you are doing, or you can ask for it by name.
 
+## When each one runs
+
+![Maintenance skills flow](docs/maintenance-flow.png)
+
+Source: [docs/maintenance-flow.drawio](docs/maintenance-flow.drawio) (editable in draw.io).
+
 ## The skills
 
 - **`project-status`** — cold-start orientation for a project. Gathers git state, open PRs, deploy health, local container status, OpenSpec change progress, unresolved spec-review blockers, and pending items from project memory, then synthesizes a "what is the state of this project right now" report and suggests one next action. Read-only; it never mutates git, the deploy, or your files. Use it when you sit back down on a project after time away.
