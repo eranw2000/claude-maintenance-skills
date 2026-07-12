@@ -1,4 +1,5 @@
 ---
+model: sonnet
 name: project-status
 description: Cold-start orientation for a project. Gathers git state, open PRs against main, Render deploy health, local Docker container status, OpenSpec change progress, unresolved spec-review Blockers, and pending items from project memory — then synthesizes a "what's the state of this project right now" report. Use when sitting back down on a project after time away ("where was I", "catch me up", "what's the state", "status check"). Read-only, never mutates git, gh, Render, Docker, or project files.
 ---

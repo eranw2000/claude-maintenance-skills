@@ -1,4 +1,5 @@
 ---
+model: sonnet
 name: split-claude-md
 description: Three-phase CLAUDE.md cleanup. Phase A rotates old Decisions Log entries into monthly archive files, builds/updates an index, and adds a grep-pattern navigation header. Phase B consolidates recurring failure patterns (2+ instances) into a canonical "Known Patterns & Gotchas" section with current instance counts. Phase C extracts stable reference sections (architecture, file maps, data layouts) into standalone files (ARCHITECTURE.md, DEVELOPMENT.md, etc.) with one-line pointer stubs in CLAUDE.md. Use when CLAUDE.md exceeds ~50K chars, when the user asks to "split" / "archive" / "shrink" / "consolidate" / "extract" CLAUDE.md, when several decision entries have accumulated that share root causes, or when CLAUDE.md has accumulated reference docs that rarely change.
 disable-model-invocation: false
