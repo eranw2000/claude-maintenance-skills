@@ -1,4 +1,5 @@
 ---
+model: sonnet
 name: salvage-session-archives
 description: Mine the Claude Code session-transcript leftover folders for a given project, extract any facts/decisions/gotchas not already captured in the project CLAUDE.md, append them under a "Salvaged from session archives" section after a duplicate/contradiction cross-check, then delete the leftover folders. Use when the user says "salvage the session archives", "extract leftover transcripts", "collect important information from the leftover folders".
 disable-model-invocation: false
