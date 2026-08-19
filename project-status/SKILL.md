@@ -36,9 +36,16 @@ git rev-list --left-right --count HEAD...main 2>/dev/null  # ahead/behind main
 
 ### 2b. Open PRs against main (if gh CLI authed)
 ```bash
-gh pr list --base main --state open --json number,title,headRefName,isDraft,createdAt,mergeable 2>/dev/null
+cd "$REPO_ROOT" && gh pr list --base main --state open --json number,title,headRefName,isDraft,createdAt,mergeable 2>/dev/null
 ```
 For each PR, compute age in days. Flag PRs older than 14 days as stale.
+
+**The `cd "$REPO_ROOT"` is load-bearing.** This skill is often launched from a project
+data directory that sits inside a different git repository, so a bare `gh` resolves to
+THAT repository and returns `[]` no matter what the project has open. It is a truthful
+answer about the wrong repo, which is the worst kind. `gh -R <owner>/<repo>` is equally
+fine. **When step 1 found no `REPO_ROOT`, skip this section and report it as skipped**,
+never as zero: an empty result here is a false negative, not a clean bill.
 
 ### 2c. Render deploy status (if a Render service ID is found)
 Extract `srv-...` ID from project CLAUDE.md OR `render.yaml`:
@@ -47,7 +54,12 @@ grep -hE 'srv-[a-z0-9]+' CLAUDE.md render.yaml 2>/dev/null | head -3
 ```
 If found, query the Render API:
 ```bash
-TOKEN=$(python3 -c "import yaml; print(yaml.safe_load(open('$HOME/.render/cli.yaml'))['api']['key'])" 2>/dev/null)
+# Grep it; do NOT yaml.safe_load. A system python3 may have no yaml module, so that
+# form raises ModuleNotFoundError and, swallowed by 2>/dev/null, yields an EMPTY token
+# indistinguishable from "no token configured". This skill reported the host as
+# unavailable on a machine where the token was present and readable.
+TOKEN=$(grep -A1 '^api:' "$HOME/.render/cli.yaml" 2>/dev/null | grep 'key:' | sed 's/.*key:[[:space:]]*//')
+if [ -z "$TOKEN" ]; then echo "NO TOKEN at ~/.render/cli.yaml (say this; never report the deploy state as unknown)"; fi
 curl -s -H "Authorization: Bearer $TOKEN" \
   "https://api.render.com/v1/services/$SRV_ID/deploys?limit=1" \
   | python3 -c "import json,sys; d=json.load(sys.stdin); print(d)" 2>/dev/null
