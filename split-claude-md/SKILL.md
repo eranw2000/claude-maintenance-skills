@@ -1,7 +1,7 @@
 ---
 model: sonnet
 name: split-claude-md
-description: Three-phase CLAUDE.md cleanup. Phase A rotates old Decisions Log entries into monthly archive files, builds/updates an index, and adds a grep-pattern navigation header. Phase B consolidates recurring failure patterns (2+ instances) into a canonical "Known Patterns & Gotchas" section with current instance counts. Phase C extracts stable reference sections (architecture, file maps, data layouts) into standalone files (ARCHITECTURE.md, DEVELOPMENT.md, etc.) with one-line pointer stubs in CLAUDE.md. Use when CLAUDE.md exceeds ~50K chars, when the user asks to "split" / "archive" / "shrink" / "consolidate" / "extract" CLAUDE.md, when several decision entries have accumulated that share root causes, or when CLAUDE.md has accumulated reference docs that rarely change.
+description: Three-phase CLAUDE.md cleanup. Phase A rotates old Decisions Log entries into monthly archive files, builds/updates an index, and adds a grep-pattern navigation header. Phase B consolidates recurring failure patterns (2+ instances) into a canonical "Known Patterns & Gotchas" section with current instance counts. Phase C extracts stable reference sections (architecture, file maps, data layouts) into standalone files (ARCHITECTURE.md, DEVELOPMENT.md, etc.) with one-line pointer stubs in CLAUDE.md. Phase D handles RULE-shaped sections that Phase C must never extract, keeping the rule in place and moving only its evidence to a satellite, for always-loaded files where a rule moved out stops being read. Use when CLAUDE.md exceeds ~50K chars, when the user asks to "split" / "archive" / "shrink" / "consolidate" / "extract" CLAUDE.md, when several decision entries have accumulated that share root causes, or when CLAUDE.md has accumulated reference docs that rarely change.
 disable-model-invocation: false
 argument-hint: "[--cut-date YYYY-MM-DD | --keep-days N | --target-file <path> | --patterns-only | --no-patterns | --extract-only | --no-extract]"
 ---
@@ -476,6 +476,85 @@ If a candidate was extracted but the resulting standalone file is < 2K, flag it 
 - Does NOT auto-extract. Always asks for per-section approval and per-file grouping.
 - Does NOT rewrite the content being extracted — moves it verbatim. Compression of reference docs is out of scope (use a separate doc-refactor pass if needed).
 - Does NOT delete sections without confirming with the user. If a candidate is genuinely never consulted, ask whether to delete outright vs. extract.
+
+---
+
+## Phase D - Extract evidence from RULE sections
+
+Phase C moves a whole section out and leaves a stub. That is right for a
+reference section and **wrong for a rule section**: a rule moved out of an
+always-loaded file stops being read, so the file gets smaller and the behaviour
+it was supposed to govern quietly stops happening. Phase D is the lever for
+rule-shaped sections. It cuts **within** a section instead of between sections:
+the rule stays, only its evidence leaves.
+
+**Origin.** Run against an always-loaded instructions file, Phase A could not run
+(no dated records) and Phase C offered 13 candidates of which **13 of 13 were
+rules**: working preferences, a writing standard, a routing policy. Following
+Phase C literally would have moved behaviour rules out of the file that is read
+on every call. Phase D cut that file by 51% with every rule retained.
+
+### D1. Confirm the shape
+
+Label every candidate `RULE` or `REFERENCE` before starting, and work out the
+file's FLOOR: the size it would still be if every piece of evidence left and only
+the imperatives stayed. Read both before starting:
+
+- **REFERENCE candidates go to Phase C.** Phase D is not for them.
+- **The FLOOR is a hard limit.** It states what extraction can reach on this
+  file. **A target below the floor cannot be met by extraction; it means deleting
+  rules. Say so before starting**, rather than discovering it three passes in.
+  One measured case set an 8,000-token target on a file whose floor was about
+  16,100, and the gap only became visible after the work was done.
+
+### D2. Split each rule section
+
+For every RULE-shaped section over the Phase D threshold (900 chars), the body
+becomes: **the imperative, the sharpest tell, and a pointer.** Everything else -
+the worked example, the incident, the measurement, the war story - moves to a
+satellite.
+
+- **What stays:** what to DO, what the tell is, and any operative literal (a
+  command, a flag, a threshold, a bypass token). If deleting a sentence would
+  change what someone does, it stays.
+- **What goes:** how it was discovered, what it cost, the dates, the project
+  names, the measured figures backing the rule.
+- **Satellite headings MUST match the CLAUDE.md headings exactly**, so the
+  pointer resolves by searching the same text. One satellite per theme, not one
+  per section.
+
+### D3. Do it programmatically, not by hand
+
+Parse the file into sections, replace ONLY the bodies over the threshold, and
+leave every heading and every under-threshold section **byte-identical**. Editing
+105 sections by hand is how a heading gets lost. One run replaced 41 bodies and
+left 64 sections untouched, verified byte-for-byte.
+
+### D4. Verify Phase D
+
+Phase C's C5 check ("confirm every original section heading is still present")
+is necessary but **NOT sufficient here, and the difference is the whole point:
+a heading check passes on a stub whose rule has been gutted.** Phase D adds:
+
+- **A must-survive rule list.** Before starting, hand-write the distinctive
+  phrases of the load-bearing rules - the ones whose loss would change behaviour
+  - and grep the finished file for every one. One run used 34 and all 34
+  survived. This is the check that actually proves the cut was safe.
+- **Every moved body appears verbatim in its satellite.** Assert the exact
+  original text is present, so nothing was silently reworded on the way out.
+- **Every untouched section is byte-identical** to the backup.
+- **No NEW characters were introduced.** Compare the character set against **the
+  ORIGINAL file, not against an absolute.** A pure-ASCII assertion is the wrong
+  check and will fail on a legitimate file: one real instructions file carries 163
+  non-ASCII characters on purpose (em dashes, non-Latin search terms, arrows). This
+  is the same wrong-scope error as checking a registry and reporting about the
+  system.
+
+### Phase D does NOT
+
+- Touch a REFERENCE-shaped section (that is Phase C).
+- Reword a rule. Compression removes evidence; it never rephrases the imperative.
+- Chase a size target below the floor. Report the floor and stop.
 
 ---
 
