@@ -37,7 +37,7 @@ Run `find ~/.claude -maxdepth 3 -type d -iname "*<project_name>*"` and inspect t
 - `~/.claude/projects/-Users-<username>--claude-worktrees-*<ProjectName>*/` (worktree-session transcripts)
 - `~/.claude/projects/-Users-<username>-...-<ProjectName>/` (transcripts from running Claude inside the project's source repo, wherever it lives)
 
-The canonical `<ProjectName>/` folder (the one containing `CLAUDE.md`) is NOT a leftover folder — never touch it during this step.
+The canonical `<ProjectName>/` folder (the one containing `CLAUDE.md`) is NOT a leftover folder. Never touch it during this step.
 
 Inside each leftover folder, look for:
 - `*.jsonl` files at the top level (one per session)
@@ -121,4 +121,4 @@ Topic headings are organic — pick names that match the codebase's existing voc
 - **Cross-check is the load-bearing step.** An early run produced 7 items, of which 3 turned out to be near-duplicates that the subagent missed because each session's transcript looked novel in isolation. Always do step 5 even when the subagent claims everything is new.
 - **Contradictions are rare but real.** If the salvage finds "X behaves as Y" and the doc says "X behaves as Z", the doc is usually right (it's been edited more recently) but ask the user before overwriting either.
 - **AI-signal vocabulary creeps in.** Subagents tend to write "crucial", "delve", and em dashes. Sanity-check the appended section against the plain-prose rules before considering it done.
-- **`rm -rf` only the dash-prefixed folders.** The classifier may flag the command; running with absolute paths (no `cd`) avoids the prompt. Never delete `~/.claude/projects/<project_name>/` — that's the canonical home.
+- **`rm -rf` only the dash-prefixed folders.** The classifier may flag the command; running with absolute paths (no `cd`) avoids the prompt. Never delete `~/.claude/projects/<project_name>/`, which is the canonical home.

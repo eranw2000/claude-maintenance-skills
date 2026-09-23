@@ -76,7 +76,7 @@ Delete nothing in these classes, however derivable it looks:
 deleting a pitfall dressed as a layout. The harmless direction is keeping a
 directory tree for one more cycle.
 
-So Phase 0 always asks a human before it deletes anything. For each candidate: state the section, state
+So Phase 0 never runs without a person answering each step. For each candidate: state the section, state
 the command whose output would replace it, RUN that command, show the output
 beside the section, and ask. A candidate whose command returns nothing, errors,
 or returns something that does not match the section is NOT derivable. It is
