@@ -1,5 +1,5 @@
 ---
-model: sonnet
+model: opus
 name: split-claude-md
 description: Six-phase CLAUDE.md cleanup for a file that has grown too large. Phase 0 deletes what the repository itself answers. Phase A rotates old dated records into monthly archives with an index and a navigation header. Phase B consolidates recurring failure patterns into a Known Patterns section with current instance counts. Phase C extracts stable reference sections to sibling files or to a skill, leaving a pointer. Phase D keeps a rule in place and moves only its evidence to a satellite, for always-loaded files where a rule moved out stops being read. Phase E scopes file-triggered rules to .claude/rules with paths frontmatter so they leave the always-loaded set entirely. Use when CLAUDE.md is over its threshold, when a rule is being followed unreliably, or when the user asks to split, shrink, archive, rotate, consolidate, extract, prune or scope a CLAUDE.md.
 disable-model-invocation: false
@@ -174,6 +174,24 @@ dated suffix, skip absent files without erroring, and never overwrite a same-day
 backup, which is the only true pre-run state. Back up to the project directory,
 never to an ephemeral job tmp dir. The full loop is in `phase-a-archive.md` A3
 and applies even when Phase A is skipped.
+
+**Before creating ANY new file beside the target, check that git will not ship it.** A
+project data directory can also be a clone of a CLIENT repository, whose `.gitignore`
+covers `CLAUDE.md` and nothing this skill creates, so an archive, a reference satellite or
+an evidence file becomes one `git add -A` away from the client. Run, for every file name
+the run will create (including the backup):
+
+```bash
+git -C <dir> rev-parse --is-inside-work-tree 2>/dev/null && \
+  for f in <each new name>; do git -C <dir> check-ignore -q --no-index "$f" || echo "TRACKABLE: $f"; done
+```
+
+On any `TRACKABLE` line, add the names to `<dir>/.git/info/exclude` (local, never
+committed, never pushed), NOT to the tracked `.gitignore`, which would be a commit to that
+repository. Re-run the loop and require zero `TRACKABLE`, with an ordinary tracked file as
+the control that must still print it. Record in the new `CLAUDE.md` that those files are
+kept out of git only by the local exclude. Measured 2026-09-18 on a project data dir that
+is a clone of a client repository: all four new names were trackable.
 
 **Fail closed on shape.** `survey.py` classifies a section REFERENCE or RULE and
 proves reference-ness rather than assuming it. Calling a rule "reference" is the

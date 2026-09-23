@@ -1,7 +1,7 @@
 ---
 model: sonnet
 name: project-status
-description: Cold-start orientation for a project. Gathers git state, open PRs against main, Render deploy health, local Docker container status, OpenSpec change progress, unresolved spec-review Blockers, and pending items from project memory — then synthesizes a "what's the state of this project right now" report. Use when sitting back down on a project after time away ("where was I", "catch me up", "what's the state", "status check"). Read-only, never mutates git, gh, Render, Docker, or project files.
+description: Cold-start orientation for a project. Gathers git state, open PRs against main, Render deploy health, local Docker container status, OpenSpec change progress, unresolved review Blockers in COMMENTS.md, and pending items from project memory, then synthesizes a "what's the state of this project right now" report. Use when sitting back down on a project after time away ("where was I", "catch me up", "what's the state", "status check"). Read-only, never mutates git, gh, Render, Docker, or project files.
 ---
 
 # Project status
@@ -20,7 +20,7 @@ Determine which project this is. Order:
 Locate the project's CLAUDE.md (in priority order):
 1. Repo-root `CLAUDE.md`
 2. `~/.claude/projects/<project>/CLAUDE.md`
-3. `~/.claude/projects/<other-naming-variant>/CLAUDE.md` (a prefixed or dash-encoded variant of the project name)
+3. `~/.claude/projects/<other-naming-variant>/CLAUDE.md` (e.g. `Python-Project-<X>`)
 
 State the detected project + CLAUDE.md path in the first line of the report.
 
@@ -34,7 +34,7 @@ git log -1 --format='%h %s (%cr)'        # last commit, age
 git rev-list --left-right --count HEAD...main 2>/dev/null  # ahead/behind main
 ```
 
-### 2b. Open PRs against main (if gh CLI authed)
+### 2b. Open PRs against main (needs `REPO_ROOT` and an authed gh CLI)
 ```bash
 cd "$REPO_ROOT" && gh pr list --base main --state open --json number,title,headRefName,isDraft,createdAt,mergeable 2>/dev/null
 ```
@@ -55,18 +55,18 @@ grep -hE 'srv-[a-z0-9]+' CLAUDE.md render.yaml 2>/dev/null | head -3
 If found, query the Render API:
 ```bash
 # Grep it; do NOT yaml.safe_load. A system python3 may have no yaml module, so that
-# form raises ModuleNotFoundError and, swallowed by 2>/dev/null, yields an EMPTY token
-# indistinguishable from "no token configured". This skill reported the host as
+# form raises ModuleNotFoundError and, swallowed by 2>/dev/null, yields an EMPTY
+# token indistinguishable from "no token configured". This skill reported Render as
 # unavailable on a machine where the token was present and readable.
 TOKEN=$(grep -A1 '^api:' "$HOME/.render/cli.yaml" 2>/dev/null | grep 'key:' | sed 's/.*key:[[:space:]]*//')
-if [ -z "$TOKEN" ]; then echo "NO TOKEN at ~/.render/cli.yaml (say this; never report the deploy state as unknown)"; fi
+if [ -z "$TOKEN" ]; then echo "NO RENDER TOKEN at ~/.render/cli.yaml (say this; do not report the deploy state as unknown without saying why)"; fi
 curl -s -H "Authorization: Bearer $TOKEN" \
   "https://api.render.com/v1/services/$SRV_ID/deploys?limit=1" \
   | python3 -c "import json,sys; d=json.load(sys.stdin); print(d)" 2>/dev/null
 ```
 Report: status (live/build_failed/etc.), timestamp of last deploy, commit hash deployed.
 
-Note: per `reference_render_api_gotchas.md`, Render deploy GET responses contain raw `\n` control chars — use `json.loads(s, strict=False)` if parsing in Python rather than the Bash one-liner above. The Bash approach uses `python3 -c "import json,sys"` which defaults to strict, so add `strict=False` if it errors.
+Note: Render deploy GET responses contain raw `\n` control chars. Use `json.loads(s, strict=False)` if parsing in Python rather than the Bash one-liner above. The Bash approach uses `python3 -c "import json,sys"` which defaults to strict, so add `strict=False` if it errors.
 
 ### 2d. Local Docker (if compose file present in repo root)
 ```bash
@@ -84,7 +84,7 @@ grep -c '\[x\]' openspec/changes/<change>/tasks.md
 grep -c '\[ \]' openspec/changes/<change>/tasks.md
 ```
 
-### 2f. Unresolved spec-review Blockers (if COMMENTS.md present)
+### 2f. Unresolved review Blockers (if COMMENTS.md present)
 ```bash
 [ -f COMMENTS.md ] && grep -c '^## B-' COMMENTS.md       # total Blockers
 [ -f COMMENTS.md ] && grep -c '^## B-.*RESOLVED' COMMENTS.md  # resolved ones
@@ -103,7 +103,7 @@ Read the project's `MEMORY.md` index. Surface any entries whose hooks contain "P
 ```bash
 stat -f %Sm -t '%Y-%m-%d' CLAUDE.md  # macOS
 ```
-Compute age in days. Flag if > 30 days since last update (per the global "End-of-Conversation Rule" — likely a project that's been worked on without doc updates).
+Compute age in days. Flag if > 30 days since last update (likely a project that has been worked on without doc updates).
 
 ## Step 3: Synthesize the report
 
@@ -149,7 +149,7 @@ Based on what you found, suggest ONE concrete next step:
 ## Guardrails
 
 - **Read-only.** Never run `git push`, `gh pr merge`, `render deploys create`, `docker compose up`, or any state-mutating command. If you find yourself reaching for one, stop and surface the finding instead.
-- **Network calls are best-effort.** If `gh` isn't authed, Render token is missing, or Docker isn't running, skip that section silently and note in the report ("Render check skipped — no token / no service ID found").
+- **Network calls are best-effort, but a skip is never SILENT and never assumed.** If `gh` isn't authed, the Render token is missing, or Docker isn't running, note it in the report ("Render check skipped: no token at ~/.render/cli.yaml"). Before writing any such line, confirm the credential is genuinely absent by reading its DOCUMENTED location (`~/.render/cli.yaml` for Render), not by trusting one failed extraction: a broken command and an absent credential produce the same empty string, and this skill shipped for months with an extraction that always failed.
 - **Don't read large files into context.** For COMMENTS.md / MEMORY.md / tasks.md, use grep / wc / head to get counts and surface, not the full content.
 - **Cap runtime.** Whole skill should finish in under ~15 seconds. If a network call (gh, render) hangs, kill it with a `timeout 5` wrapper and report "check timed out."
 - **Respect the dual-viewport rule trigger.** This skill doesn't edit files, so the PostToolUse hook won't fire — but if your report suggests a UI change as next action, restate the dual-viewport requirement in the recommendation.
