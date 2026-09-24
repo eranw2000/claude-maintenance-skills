@@ -1,6 +1,6 @@
 # Claude Code maintenance skills
 
-Three Claude Code skills for keeping a project's knowledge and your Claude Code setup healthy over time: orient yourself when you come back to a project, keep its `CLAUDE.md` from bloating, and recover anything useful left behind in old session transcripts.
+Four Claude Code skills for keeping a project's knowledge and your Claude Code setup healthy over time: orient yourself when you come back to a project, keep its `CLAUDE.md` from bloating, recover anything useful left behind in old session transcripts, and turn a helper script Claude wrote into a permanent tool of a skill.
 
 Each skill is a self-contained directory (a `SKILL.md`). Claude can invoke one when its description matches what you are doing, or you can ask for it by name.
 
@@ -15,6 +15,7 @@ Source: [docs/maintenance-flow.drawio](docs/maintenance-flow.drawio) (editable i
 - **`project-status`**: cold-start orientation for a project. Gathers git state, open PRs, deploy health, local container status, OpenSpec change progress, unresolved review blockers, and pending items from project memory, then synthesizes a "what is the state of this project right now" report and suggests one next action. Read-only; it never mutates git, the deploy, or your files. Use it when you sit back down on a project after time away.
 - **`split-claude-md`**: six-phase `CLAUDE.md` maintenance for a file that has grown too large. Phase 0 deletes what the repository itself answers. Phase A rotates old dated records into monthly archives with an index. Phase B consolidates recurring failure patterns. Phase C extracts stable reference sections to sibling files. Phase D keeps a rule in place and moves only its evidence out, which is the one cut that does not delete a rule. Phase E scopes file-triggered rules to `.claude/rules/` so they leave the always-loaded set entirely. Ships `survey.py`, which measures the file and prints the candidates for phases 0, C, D and E, and `rotate.py` for the Phase A move. The skill body is a short driver; each phase's detail lives in `split-claude-md/reference/`, so a compaction cannot truncate it.
 - **`salvage-session-archives`**: mine the Claude Code session-transcript leftover folders for a project, extract durable facts, decisions, and gotchas that never made it into the project's `CLAUDE.md`, cross-check them against what is already documented (duplicates and contradictions), append the genuinely new items under a "Salvaged from session archives" section, then delete the leftover folders. Recovers lost context and cleans up disk in one pass. It asks before deleting anything.
+- **`save-script-to-skill`**: after a skill run where Claude wrote a helper script to finish the job, moves that script into the skill's `scripts/` folder and rewrites the skill's `SKILL.md` so the next run executes the file instead of writing it again. Ships `find_session_scripts.py`, which reads the session transcript to find the skill invoked last and every script written or run after it. It makes the script reusable (arguments instead of session values, no secrets, clear exit codes), runs it once on the same input, and asks when more than one script could be the one.
 
 ## Install
 
@@ -24,6 +25,7 @@ Each subdirectory here is a self-contained skill. Copy or symlink the skill dire
 cp -R claude-maintenance-skills/project-status \
       claude-maintenance-skills/split-claude-md \
       claude-maintenance-skills/salvage-session-archives \
+      claude-maintenance-skills/save-script-to-skill \
       ~/.claude/skills/
 ```
 
