@@ -70,7 +70,11 @@ done
 
 Do NOT skip this. The user must be able to revert if anything looks off. The run mutates THREE files, not one: CLAUDE.md is rewritten, the target archive is appended to, and the index is edited in place, so all three get siblings with the same suffix. Skip absent files without erroring (a first run has no index and no archive). And never overwrite an existing same-day backup: it is the only true pre-run state, and at the current 2-3-day rotation cadence two same-day runs have already happened; append a counter instead.
 
+Each file is backed up once per run, the first time the run is about to mutate it: the session records the name of every backup it takes, and A3 backs up only the files with no backup recorded in this run (after Phase 0's step 0.0, that is the target archive only), with the same no-overwrite suffix rule, because a second same-day copy of CLAUDE.md would overwrite `-2`.
+
 ### A4. Group entries to archive by month
+
+**With `rotate.py`** (entry and section conventions), follow the order in `reference/no-loss-checks.md`: a dry run with `--convention`, `--cut-date` and one `--keep "<title fragment>"` per record a state-based cut keeps, the person's approval of its REPORT.dry.md, then the same call with `--apply`. It does A4 to A7 and the A9 presence check itself. The steps below are the hand path, which the bullet convention needs, and say what `rotate.py` writes.
 
 For every dated heading whose date is < cut date (or, on a state-based cut, every entry judged closed):
 - Extract the entry: from the `### YYYY-MM-DD: ...` line to the line before the next `### YYYY-MM-DD:` (or before the next `## ` heading, whichever comes first).
@@ -99,6 +103,8 @@ Decisions log entries archived from `CLAUDE.md` on YYYY-MM-DD to keep active con
 ```
 
 ### A5. Build or update `CLAUDE_DECISIONS_INDEX.md`
+
+With `rotate.py --apply`, the index gains the entry rows and one Runs row, appended; every prose section stays verbatim. A hand run writes the Runs row from the template in `reference/no-loss-checks.md`.
 
 The index is a one-line-per-entry chronological listing that stays in active context. Format:
 
@@ -139,6 +145,8 @@ This project's decision-log entries use `<exact heading pattern, e.g. ### vN.M.K
 
 ### A6. Rewrite the active CLAUDE.md
 
+With `rotate.py --apply`, CLAUDE.md is written once: the moved records leave and one Last-run line is placed. It refuses a moving record that open work names unless `--keep` or `--move-anyway "<title>"` names it, and a rule sentence that would leave CLAUDE.md unless it is hoisted (a Rules draft line pasted above the moving records, or a `--hoisted <file>`) or `--narrative "<title>"` names its record. It does not rewrite the section header below; edit that by hand.
+
 The new CLAUDE.md keeps:
 - Everything BEFORE the Decisions Log section (preamble).
 - The "Finding Historical Context" section (insert if absent — see A7).
@@ -156,9 +164,11 @@ Last ~30 days only (or whatever the keep window was; on a state-based cut, say i
 
 ### A7. Insert "Finding Historical Context" section if absent
 
+`rotate.py` does not insert this section. When it is present, `rotate.py --apply` places its Last-run line on the line after its "Maintenance rule" heading.
+
 `grep -q '^## Finding Historical Context' CLAUDE.md`. If absent, insert this block right before the Decisions Log section (or right after Directory Conventions / Project Overview, whichever is later in the file):
 
-```markdown
+````markdown
 ## Finding Historical Context
 
 This CLAUDE.md keeps roughly the last ~30 days of decision-log entries (a project that cuts by state keeps the still-load-bearing ones instead; adapt this sentence). Older decisions live in separate archive files in this same directory:
@@ -190,11 +200,13 @@ git show <hash>   # run inside the relevant project repo, not this directory
 
 ### Maintenance rule
 When CLAUDE.md grows past ~50K chars, run `/split-claude-md` to rotate the oldest month of decisions into a new archive file and update the index. Don't manually edit CLAUDE.md to inline old decisions back in.
-```
+````
 
 If the section IS already present, leave it alone (the user may have customized the wording).
 
 ### A8. Verify Phase A
+
+With `rotate.py --apply`, the run folder's REPORT.md carries these figures (sizes, moved and kept records with reasons, the loss check, the backups), and its manifest.json names every file the run wrote. When Phase 0 ran, append the `Phase 0 loss report:` line that `reference/no-loss-checks.md` gives. A hand run writes the same report into its session folder.
 
 Report:
 - Original CLAUDE.md size (chars / lines).
@@ -217,6 +229,8 @@ If CLAUDE.md grew, report honestly:
 STOP only if CLAUDE.md grew AND the growth cannot be explained by the navigation section + the archive being small. That signals real bugs: content duplicated, sections lost their boundaries, or the rewrite went wrong. Diff against the backup to find the issue.
 
 ### A9. Sanity-check the splits
+
+With `rotate.py --apply`, the per-entry presence check below runs inside the apply (exit 2 on a failure, with the `--undo` command printed), and `rotate.py CLAUDE.md --undo <date or run folder>` reverts an applied run, dry run first, then `--apply`. A hand run adds the loss and pointer checks in `reference/no-loss-checks.md`.
 
 - `head -20 CLAUDE.md` — first lines should be the same as the backup's first lines.
 - `tail -20 CLAUDE.md` — last lines should be the same (postamble preserved).

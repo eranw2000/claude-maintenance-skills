@@ -97,6 +97,10 @@ Saves several rounds of Edit + Read verification. Safe because each heading is u
 
 Phase A's required A3 backup loop (CLAUDE.md, the index, the target archive; skip absent files, never overwrite a same-day backup) applies even when Phase A is skipped (`--patterns-only`, `--extract-only`). Phases B and C also mutate CLAUDE.md; the backup is a single revert away from any mistake. The backups are three small file copies: never skip them, and never write them to an ephemeral job tmp dir, which is where the 2026-08-10 run put the index and archive copies before this rule named all three.
 
+The loop runs once per run for each file, the first time the run is about to mutate it: the session records the name of every backup it takes, and each later invocation (A3, Phase D's backup step, or this rule) backs up only the files with no backup recorded in this run, with the same no-overwrite suffix rule. A second same-day copy of CLAUDE.md would overwrite `-2`.
+
 ### Verify with `diff` against the backup
 
 After all phases complete, `diff <(sed -n '1,10p' CLAUDE.md) <(sed -n '1,10p' CLAUDE.md.backup-before-split-YYYYMMDD)` and the same for the tail should both produce empty output. Preamble and postamble must be byte-identical to the backup. If they're not, something went wrong in the heading-boundary detection or stub replacement. This sanity check is fast and catches the most common Phase C bug.
+
+The end-of-run proof is the per-phase checks in `reference/no-loss-checks.md`: after each of Phases B to E, `loss_check.py --structure` against that phase's own `CLAUDE.md.before-<letter>` copy, and `pointers.py` on the finished CLAUDE.md. A phase is done when both exit 0.

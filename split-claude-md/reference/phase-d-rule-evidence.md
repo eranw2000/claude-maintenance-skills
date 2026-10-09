@@ -14,6 +14,14 @@ could not run (no dated records) and Phase C offered 13 candidates of which
 of the always-loaded file. Phase D achieved 131,926 -> 65,034 chars (-51%) with
 every rule retained.
 
+### D0. Back up first
+
+Phase D rewrites CLAUDE.md and writes satellites. Before its first edit, run A3's
+backup loop (`phase-a-archive.md`) for the files with
+no backup recorded in this run, then copy CLAUDE.md to
+`<session folder>/CLAUDE.md.before-D`. D4's loss check compares against that
+copy; the run's first backup stays the revert copy.
+
 ### D1. Confirm the shape
 
 `survey.py` labels every candidate `RULE` or `REFERENCE` and prints a FLOOR
@@ -55,10 +63,12 @@ Phase C's C5 check ("confirm every original section heading is still present")
 is necessary but **NOT sufficient here, and the difference is the whole point:
 a heading check passes on a stub whose rule has been gutted.** Phase D adds:
 
-- **A must-survive rule list.** Before starting, hand-write the distinctive
-  phrases of the load-bearing rules - the ones whose loss would change behaviour
-  - and grep the finished file for every one. The 2026-08-11 run used 34 and all
-  34 survived. This is the check that actually proves the cut was safe.
+- **The loss and pointer checks.** Run `loss_check.py --structure` against
+  `<session folder>/CLAUDE.md.before-D`, with `--edited` for every section whose
+  body this phase replaced, and `pointers.py` on CLAUDE.md, as
+  `reference/no-loss-checks.md` gives them. Both must exit 0. The loss check reads
+  every rule sentence of the copy, so it also catches the rule nobody thought to
+  list. This is the check that actually proves the cut was safe.
 - **Every moved body appears verbatim in its satellite.** Assert the exact
   original text is present, so nothing was silently reworded on the way out.
 - **Every untouched section is byte-identical** to the backup.
