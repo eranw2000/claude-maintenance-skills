@@ -80,8 +80,8 @@ cannot fail.
 - The user asks to "split" / "shrink" / "archive" / "rotate" / "consolidate" / "extract" CLAUDE.md.
 - `wc -c CLAUDE.md` reports > 50,000 chars and the bulk is decision-log entries.
 - After a long session that added many decision entries.
-- Decision-log entries explicitly cite "Nth instance", "Updated count", or "recurring pattern" — a sign Phase B consolidation is overdue.
-- CLAUDE.md contains large stable reference sections (architecture pipelines, file maps, directory layouts, advisor / endpoint tables) that haven't been edited in many sessions — a sign Phase C extraction is overdue.
+- Decision-log entries explicitly cite "Nth instance", "Updated count", or "recurring pattern", a sign Phase B consolidation is overdue.
+- CLAUDE.md contains large stable reference sections (architecture pipelines, file maps, directory layouts, advisor / endpoint tables) that haven't been edited in many sessions, a sign Phase C extraction is overdue.
 - A rule in the file is being followed unreliably. Length reduces adherence, so
   a cut is a candidate fix and restating the rule is not.
 - The file describes something the repository already answers, such as a
@@ -95,9 +95,9 @@ cannot fail.
 
 ## When NOT to run
 
-- CLAUDE.md is under 50K chars AND no recurring patterns are obvious AND no large reference sections — the cleanup adds maintenance burden without saving meaningful context.
+- CLAUDE.md is under 50K chars AND no recurring patterns are obvious AND no large reference sections, so the cleanup adds maintenance burden without saving meaningful context.
 - The file has no dated records in ANY of the three shapes Phase A can archive (`### YYYY-MM-DD: title` entries, whole dated `## ` sections, or dated top-level bullets `- Shipped (YYYY-MM-DD): ...`); Phases B and C can still run independently.
-- All entries are from the last 30 days (or, on a project that cuts by state, every entry is still load-bearing) AND no recurring patterns exist AND all sections are small/active — nothing to do at any phase.
+- All entries are from the last 30 days (or, on a project that cuts by state, every entry is still load-bearing) AND no recurring patterns exist AND all sections are small/active, so there is nothing to do at any phase.
 - The file is NOT always-loaded. A satellite, an archive, or a reference doc
   that only loads when something opens it costs nothing per session, so
   shrinking it buys nothing. Confirm with `/context` which files actually load
@@ -190,18 +190,16 @@ On any `TRACKABLE` line, add the names to `<dir>/.git/info/exclude` (local, neve
 committed, never pushed), NOT to the tracked `.gitignore`, which would be a commit to that
 repository. Re-run the loop and require zero `TRACKABLE`, with an ordinary tracked file as
 the control that must still print it. Record in the new `CLAUDE.md` that those files are
-kept out of git only by the local exclude. Measured 2026-09-18 on a project data dir that
-is a clone of a client repository: all four new names were trackable.
+kept out of git only by the local exclude.
 
 **Fail closed on shape.** `survey.py` classifies a section REFERENCE or RULE and
 proves reference-ness rather than assuming it. Calling a rule "reference" is the
 harmful direction, because it ends with a behaviour rule extracted out of an
 always-loaded file. Calling reference "rule" only costs a slightly smaller cut.
 
-**A heading check is not a rule check.** Confirming every heading survived passes
-on a stub whose rule was gutted. Before starting, hand-write the distinctive
-phrases of the load-bearing rules, and grep the finished file for every one. That
-is the check that proves the cut was safe.
+- **Dry run first, and the person approves its report.** See `reference/no-loss-checks.md`: every `rotate.py` run writes REPORT.dry.md first, and nothing is applied until the person has approved that report and every waiver in it.
+- **The loss and pointer checks prove the cut was safe.** See `reference/no-loss-checks.md`: `loss_check.py` and `pointers.py` run after Phase 0, before `--apply` and after each of Phases B to E, and the next phase waits for exit 0.
+- **The recall check ends every run.** See `reference/no-loss-checks.md`: `recall_check.py` asks the run's QUESTIONS.md pack before and after the split; exit 3 means a question was lost, so show it and offer the undo.
 
 **Never claim a saving you did not measure.** Phase B normally GROWS the file and
 that is correct, because its win is currency and findability. Say so.
@@ -223,8 +221,8 @@ carries Hebrew scan terms or arrows on purpose.
 - Don't push or commit anything. This is a local file restructure; commits/pushes are a separate concern.
 - Don't invent pattern names, instance counts, or root causes in Phase B. Source everything from the user's existing decision-log prose. When the prose is ambiguous, ASK.
 - Don't promote a candidate to global memory in Phase B without explicit user approval. Even if a pattern looks cross-project, the user owns the global memory layout.
-- Don't extract sections in Phase C that are on the deny list, smaller than the threshold, or recently edited — even if the user pre-approves a batch. Confirm per-section.
-- Don't rewrite a section's content during Phase C extraction — Phase C MOVES sections verbatim. If a section needs rewriting, do that as a separate slice before or after the extraction.
+- Don't extract sections in Phase C that are on the deny list, smaller than the threshold, or recently edited, even if the user pre-approves a batch. Confirm per-section.
+- Don't rewrite a section's content during Phase C extraction. Phase C MOVES sections verbatim. If a section needs rewriting, do that as a separate step before or after the extraction.
 
 ---
 - Don't use `@path` imports to make a file smaller. They load at launch with the

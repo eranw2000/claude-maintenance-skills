@@ -47,7 +47,9 @@ grep -li "<keyword>" ~/.claude/projects/*/memory/feedback_*.md
 Each pattern entry uses this template:
 
 ```markdown
-### Pattern: <Short Pattern Name> (<N> instances)
+### Pattern: <Short Pattern Name>
+
+**<N> instances.**
 
 **Signal.** <One sentence describing what this looks like in production — error message, missing data, wrong output, etc.>
 
@@ -66,6 +68,7 @@ Each pattern entry uses this template:
 ```
 
 Notes on filling the template:
+- **The instance count goes on the section's first line, never in the heading.** Updating the count then never renames the heading, so a "same heading" pointer to it keeps resolving.
 - **Pattern Name** comes from the user's existing terminology in the decision entries (e.g., "JSON-mode/markdown trap", "family-bug classifier extensions"). Don't invent new names; mine the existing prose.
 - **Instance rows** should distinguish each occurrence — same pattern, different location. "JSON-mode trap in Phase 4" vs "JSON-mode trap in macro fast path" — both instances, different locations.
 - **Commit hashes** come from the decision entries themselves. If an entry doesn't cite a commit, omit it from the row.
@@ -85,10 +88,14 @@ The section structure:
 
 <One-paragraph intro: what this section is, when to scan it, pointer to global memory for cross-project lessons.>
 
-### Pattern: <Name 1> (<N> instances)
+### Pattern: <Name 1>
+
+**<N> instances.**
 ...
 
-### Pattern: <Name 2> (<N> instances)
+### Pattern: <Name 2>
+
+**<N> instances.**
 ...
 
 ---

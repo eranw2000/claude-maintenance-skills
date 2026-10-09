@@ -19,6 +19,14 @@ Auto memory applies the same rule from the other side, skipping anything it can
 derive from the code. Run `/doctor` on a checked-in file and read its proposal
 before doing this by hand; it is evidence, not a verdict.
 
+### 0.0 Back up first
+
+Before any deletion, run `phase-a-archive.md` A3's loop now for CLAUDE.md and the index only
+(Phase 0 edits only CLAUDE.md, and the target archive's month is not known until A2).
+Record the CLAUDE.md backup's file name as the run's first backup: the Phase 0 loss check
+and the pre-apply check both compare against it, and A3 later backs up only the files with
+no backup recorded in this run.
+
 ### 0.1 The test, and it is one question
 
 **Could a session answer this by reading the repository, in one command it would
@@ -114,6 +122,8 @@ read a rationale hidden inside a file map. Treat the block as a shortlist.
   the only phase whose saving is permanent rather than relocated.
 - A one-line note in the run report for each section the repo CONTRADICTED, so
   the correction does not vanish with the deletion.
+- The Phase 0 loss check per `reference/no-loss-checks.md`, run after Phase 0:
+  exit 0 before the next phase starts, or before the run ends when no phase follows.
 
 ### Phase 0 does NOT
 

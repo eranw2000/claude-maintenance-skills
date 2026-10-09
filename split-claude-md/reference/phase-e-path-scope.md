@@ -136,9 +136,12 @@ The check that matters is whether the rule LOADS, and text cannot answer that.
 - **`/context` before and after.** The saving is the drop in the startup
   breakdown, not the size of the file you moved. Report the measured drop.
 - **Frontmatter present on every written file**, asserted, per E4.
-- **The must-survive list from Phase D applies here too.** Grep the moved rule's
-  distinctive phrase and confirm it is present in exactly one place, and that
-  the place is the rules file rather than both.
+- **The per-phase loss check in `reference/no-loss-checks.md` applies here too.**
+  Run it against Phase E's own `<session folder>/CLAUDE.md.before-E` copy, with
+  one `--accept` for each rule the phase moved, since a `rules/*.md` file is not
+  a holding file. Then grep the moved rule's distinctive phrase and confirm it
+  is present in exactly one place, and that the place is the rules file rather
+  than both.
 
 ### E7. When a rule must never be missed, it is a hook and not a rule
 
