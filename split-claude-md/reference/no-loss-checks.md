@@ -4,7 +4,10 @@ These checks replace the hand-typed must-survive list. A heading check passes on
 a stub whose rule was gutted; these checks read every rule sentence, heading,
 path, identifier and command of the file before the edit and say where each one
 went. Every script here exits 0 when the check holds, 3 on a finding and 2 when
-it cannot tell. Do not start the next phase, and do not end the run, on a 3 or a 2.
+it cannot tell. Do not start the next phase, and do not end the run, on a 3 or a 2,
+with one exception: `pointers.py` also exits 3 on unresolved pointers that were
+there before the run, so judge it by its before and after lists (no NEW
+unresolved line), as the Phases B to E section says.
 
 `<skill-dir>` is this skill's folder. `<session folder>` is the run folder the
 session makes itself (below).
@@ -82,6 +85,14 @@ A rule-holding Phase A run goes in this order:
    `FRAGMENT CHECK (predicted for --apply)` line. Each Rules draft line is a
    whole paragraph, list item, table row or heading that holds a rule word,
    written as a line you can paste.
+
+   Its exit status: 0 means `--apply` with the same flags would go through; 3
+   means `--apply` would refuse (open work, a rule sentence that would leave, a
+   blocking loss item) and the last line says `--apply WOULD REFUSE`, or a
+   fragment failure is predicted, in which case `--apply` would NOT refuse: it
+   would write every file and then exit 2 with an undo to run, and the last line
+   says `--apply would WRITE`; 2 means cannot tell. REPORT.dry.md is written in all
+   three cases except an early cannot-tell.
 3. Show the dry-run report to the person and get approval of the moved set and
    of every waiver before any `--apply`. Each waiver names one record or one
    item, and the report lists each one:
@@ -142,6 +153,19 @@ python3 <skill-dir>/pointers.py CLAUDE.md
 ```
 
 - `--edited` once for each section the phase changed or added.
+- `pointers.py` exits 3 on ANY unresolved pointer, old ones included, so on a
+  file that already had some, compare lists rather than reading the status: run
+  it on CLAUDE.md before the phase's first edit and again after, and require no
+  NEW unresolved line. Run the "before" on CLAUDE.md itself, not on the copy in
+  the session folder: a copy resolves names against the session folder, so it
+  reports many false unresolved pointers unless you pass
+  `--root <the CLAUDE.md folder>`.
+- **A Phase D cut made with `phase_d.py` has already passed both checks.** It
+  runs them on the planned files before it writes (its own untouched-section
+  check stands in for `--structure`) and refuses on a loss or a NEW unresolved
+  pointer, so its exit 0 needs neither again. Pass it the `--accept` and
+  `--root` values these commands would need. A Phase D edit made by hand, or
+  any other edit in the same phase, still needs both commands.
 - `--accept` only for that phase's own intended deletions. A rule Phase E moves
   to `.claude/rules/` needs one, since a rules file is not a holding file.
 - Never the first backup here: earlier phases' waivers (Phase 0's list, Phase

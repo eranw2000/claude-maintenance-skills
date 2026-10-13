@@ -310,7 +310,8 @@ def scenario_4():
             "--root", root]
     rc, out, err = run(ROTATE, base, cwd=d)
     dirs = split_dirs(d)
-    if rc != 0 or len(dirs) != 1 or not os.path.isfile(os.path.join(d, dirs[0], "REPORT.dry.md")):
+    # an unwaived open item: the dry run exits 3 (--apply would refuse)
+    if rc != 3 or len(dirs) != 1 or not os.path.isfile(os.path.join(d, dirs[0], "REPORT.dry.md")):
         return False, "leg 1 dry run: rc=%d split dirs=%r %s" % (rc, dirs, tail(out + err))
     sec = report_section(read(os.path.join(d, dirs[0], "REPORT.dry.md")), "Open-work evidence")
     ti = next((i for i, l in enumerate(sec) if title in l), None)
@@ -650,7 +651,8 @@ def scenario_11():
     c = write(os.path.join(d, "CLAUDE.md"), S11_COLLIDE)
     rc, out, err = run(ROTATE, [c] + S11_ARGS + ["--root", root], cwd=d)
     m = S11_PRED.search(out)
-    if rc != 0 or not m or int(m.group(2)) < 1:
+    # a predicted fragment failure: the dry run exits 3 (--apply would write, then exit 2)
+    if rc != 3 or not m or int(m.group(2)) < 1 or "--apply would WRITE" not in out:
         fails.append("(c) colliding dry run: rc=%d %s" % (rc, tail(out + err)))
     rc2, out2, err2 = run(ROTATE, [c] + S11_ARGS + ["--root", root, "--apply"], cwd=d)
     if rc2 != 2:

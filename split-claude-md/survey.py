@@ -77,7 +77,7 @@ CANDIDATE_CHARS = 3000
 # discriminator and not a constant.
 OBLIGATION_RE = re.compile(
     r"\b(must|never|always|do not|don't|should|cannot|can't|"
-    r"required|mandatory|forbidden)\b", re.I)
+    r"required|mandatory|forbidden|has\s+to|have\s+to|needs\s+to)\b", re.I)
 IMPERATIVE_RE = re.compile(
     r"^\s*(?:[-*]\s+)?(?:\*\*)?(Use|Run|Check|Verify|Assert|Keep|Write|Read|"
     r"Prefer|Never|Always|Do|Don't|Stop|Ask|Treat|Confirm|Name|State|Say|Add|"
@@ -91,6 +91,13 @@ KV_ROW_RE = re.compile(r"^\s*[-*]\s+`[^`]+`\s*[:=-]")
 # rule-shaped sections from 107,032 chars to 40,140 by moving evidence out and
 # keeping every rule -- 37%. Used only to estimate the floor, never enforced.
 RULE_RETENTION = 0.37
+
+# A section that already carries a Phase D evidence pointer (a line ENDING in a
+# backticked .md file then "same heading", e.g. "Evidence: `X.md`, same
+# heading.") has had its evidence moved once. The 37%
+# was measured on a FIRST pass; a second pass keeps nearly all of it, so such a
+# section is counted at full size.
+PHASE_D_POINTER_RE = re.compile(r"`[^`\n]+\.md`,?[ \t]+same heading\.?[ \t]*$", re.I | re.M)
 
 # --- Phase 0 detection (added 2026-08-24) ---------------------------------
 # Phase 0 DELETES what the repository itself answers, instead of relocating it.
@@ -635,6 +642,8 @@ def main(argv):
               and not is_denied(s["title"])
               and s["start"] not in evidence_deny
               and classify_shape(s.get("body", ""))[0] == "RULE"]
+    done_c = [s for s in rule_c if PHASE_D_POINTER_RE.search(s.get("body", ""))]
+    rule_c = [s for s in rule_c if s not in done_c]
     touched = ref_ids | set(id(s) for s in rule_c)
     fixed = sum(s["chars"] for s in sections if id(s) not in touched)
     est = (fixed
@@ -699,6 +708,10 @@ def main(argv):
           % (sum(s["chars"] for s in rule_c), len(rule_c), PHASE_D_CHARS,
              int(sum(s["chars"] for s in rule_c) * RULE_RETENTION),
              int(RULE_RETENTION * 100)))
+    if done_c:
+        print("  %7d ch  %d RULE-shaped sections already carry a Phase D evidence pointer;"
+              % (sum(s["chars"] for s in done_c), len(done_c)))
+        print("               counted at full size above (a second pass keeps nearly all)")
     print("  %7d ch  %d REFERENCE-shaped candidates -> ~%d ch as stubs"
           % (sum(s["chars"] for s in ref_c), len(ref_c), len(ref_c) * 120))
     print("  ESTIMATE  ~%d ch (~%d tokens), a %d%% cut from %d ch"

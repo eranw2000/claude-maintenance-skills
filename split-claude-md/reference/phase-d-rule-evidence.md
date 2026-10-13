@@ -49,6 +49,16 @@ satellite.
 - **Satellite headings MUST match the CLAUDE.md headings exactly**, so the
   pointer resolves by searching the same text. One satellite per theme, not one
   per section.
+- **On a second pass, prefer ONE shared pointer line over one per section.** A
+  pass that only cuts story sentences out of many sections saves a few hundred
+  chars per section, and a pointer line per section can cost most of that. One
+  line in the file's archive-finding section ("story sentences cut from kept
+  sections are in the month archive, under the section's own heading") covers
+  them all.
+- **Cutting INSIDE a section that cannot move as a whole** (a dated record that
+  open work still reads, or a rule section) is the same move at sentence size:
+  drop whole story sentences, keep every rule sentence word for word, and copy
+  the unit as it stood into the archive under the same heading.
 
 ### D3. Do it programmatically, not by hand
 
@@ -56,6 +66,25 @@ Parse the file into sections, replace ONLY the bodies over the threshold, and
 leave every heading and every under-threshold section **byte-identical**. Editing
 105 sections by hand is how a heading gets lost. The 2026-08-11 run replaced 41
 bodies and left 64 sections untouched, verified byte-for-byte.
+
+**For sentence-size cuts, use `<skill-dir>/phase_d.py`** rather than a hand
+script. It takes a JSON spec (per cut: the heading, the first-line prefix of one
+bullet or paragraph, the story sentences to drop, the archive month; plus one
+optional shared pointer line), runs as a dry run until `--write`, and refuses
+(exit 3, nothing written) on: a prefix that is not unique or sits under another
+heading, a drop that does not match exactly once, a rule sentence of the unit
+that would not survive word for word (unless the cut sets `allow_rule_edit`),
+a double space left behind, two cuts whose units overlap, a changed heading, a
+new character, or a changed untouched section; a malformed spec or an unclosed
+code fence is exit 2. A unit already in the archive word for word under the
+same heading is not copied twice. It backs up every
+file it writes (`--no-backup` when the session already did) and appends one row
+to the index. Its usage and spec format are in its docstring. It also runs the
+loss check and the pointer check on the planned files before writing, and
+refuses on an item lost without an `--accept` waiver or on a NEW unresolved
+pointer (old ones are counted). Pass the waivers a hand-run loss check would
+need, and `--root` for any folder pointers resolve against. Run the recall
+check after it as usual.
 
 ### D4. Verify Phase D
 
@@ -66,9 +95,13 @@ a heading check passes on a stub whose rule has been gutted.** Phase D adds:
 - **The loss and pointer checks.** Run `loss_check.py --structure` against
   `<session folder>/CLAUDE.md.before-D`, with `--edited` for every section whose
   body this phase replaced, and `pointers.py` on CLAUDE.md, as
-  `reference/no-loss-checks.md` gives them. Both must exit 0. The loss check reads
+  `reference/no-loss-checks.md` gives them. The loss check must exit 0; the
+  pointer check must show no NEW unresolved pointer (it exits 3 on old ones
+  too, so compare the before and after lists). The loss check reads
   every rule sentence of the copy, so it also catches the rule nobody thought to
-  list. This is the check that actually proves the cut was safe.
+  list. This is the check that actually proves the cut was safe. A cut made
+  with `phase_d.py` has already passed both (see above); run them for a hand
+  edit.
 - **Every moved body appears verbatim in its satellite.** Assert the exact
   original text is present, so nothing was silently reworded on the way out.
 - **Every untouched section is byte-identical** to the backup.
