@@ -71,7 +71,8 @@ the phase file when you reach that phase, not before.
   `reference/cross-phase.md`
 
 The skill's own checks: `python3 <skill-dir>/run_tests.py` runs every test file
-and prints one total. It fails when any file reports no tally, because a runner
+and the frozen acceptance scenarios in `goal_check.py`, and prints one total. It
+fails when any file reports no tally, because a runner
 that silently covers a fraction of its suite is the exact shape of a check that
 cannot fail.
 
@@ -134,6 +135,12 @@ multibyte text all three disagree.
 silently stopped loading reads exactly like a rule being ignored, and no
 character count can tell them apart.
 
+**`/context` is a built-in command that only the person can type; Claude cannot
+run it.** Ask the person to run it at the start and at the end, and paste or
+read back the figures. When nobody is there to type it, measure Python
+`len()` characters of CLAUDE.md before and after, and say in the report that
+`/context` was not run and the figures are characters, not tokens.
+
 Then run the surveyor, which answers the discovery questions for Phases 0, A, C,
 D and E in one pass and prints its evidence:
 
@@ -150,8 +157,9 @@ keeps the gap visible even when the project threshold is met.
 
 ## Step N. Measure again, and report what MOVED versus what went
 
-Run `/context` at the end and report the measured drop, not the size of the text
-you relocated. They differ, and only one of them is a saving.
+Run `/context` at the end (ask the person; Step 1 gives the fallback) and report
+the measured drop, not the size of the text you relocated. They differ, and only
+one of them is a saving.
 
 Report these separately, because they are not the same kind of result:
 
@@ -198,7 +206,7 @@ harmful direction, because it ends with a behaviour rule extracted out of an
 always-loaded file. Calling reference "rule" only costs a slightly smaller cut.
 
 - **Dry run first, and the person approves its report.** See `reference/no-loss-checks.md`: every `rotate.py` run writes REPORT.dry.md first, and nothing is applied until the person has approved that report and every waiver in it.
-- **The loss and pointer checks prove the cut was safe.** See `reference/no-loss-checks.md`: `loss_check.py` and `pointers.py` run after Phase 0, before `--apply` and after each of Phases B to E, and the next phase waits for exit 0.
+- **The loss and pointer checks prove the cut was safe.** See `reference/no-loss-checks.md`: `loss_check.py` and `pointers.py` run after Phase 0, before `--apply` and after each of Phases B to E, and the next phase waits for the loss check's exit 0 and no NEW unresolved pointer. A Phase D cut made with `phase_d.py` runs both itself before it writes.
 - **The recall check ends every run.** See `reference/no-loss-checks.md`: `recall_check.py` asks the run's QUESTIONS.md pack before and after the split; exit 3 means a question was lost, so show it and offer the undo.
 
 **Never claim a saving you did not measure.** Phase B normally GROWS the file and

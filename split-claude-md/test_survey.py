@@ -427,6 +427,54 @@ def main():
           and "Build cycle 1" in body.split("holds the dated records")[-1],
           body[:400])
 
+    # 22. Phase 0: "has to" is a duty. A file map that says the README "has to"
+    # be updated carries an obligation and is not offered for deletion; the same
+    # map without it is.
+    fmap = ("## File map\n\n"
+            "- `src/app/main.py` holds the entry point.\n"
+            "- `src/app/models.py` holds the models.\n"
+            "- `src/app/views.py` holds the views.\n"
+            "- `src/app/urls.py` holds the routes.\n"
+            "- `config/settings.toml` holds the settings.\n"
+            "- The README {verb} be updated whenever a module ships.\n"
+            "- Plain line one about the layout.\n"
+            "- Plain line two about the layout.\n")
+    prune = lambda o: o.split("PHASE 0 PRUNE CANDIDATES")[-1].split("PHASE C CANDIDATES")[0]
+    rc, out, err = run(write(tmp, "fmap_plain.md", "# P\n\n" + fmap.format(verb="will") + "\n"))
+    check("CONTROL: a plain file map is a Phase 0 candidate", "File map" in prune(out), prune(out))
+    rc, out, err = run(write(tmp, "fmap_duty.md", "# P\n\n" + fmap.format(verb="has to") + "\n"))
+    check("a file map carrying 'has to' is NOT a Phase 0 candidate",
+          "File map" not in prune(out), prune(out))
+    rc, out, err = run(write(tmp, "fmap_wrapped.md", "# P\n\n"
+                             + fmap.format(verb="has\n  to") + "\n"))
+    check("a 'has to' duty wrapped across two lines still counts",
+          "File map" not in prune(out), prune(out))
+
+    # 23. FLOOR: a rule section that already carries a Phase D evidence pointer
+    # is counted at full size, not at the first-pass 37%.
+    rules = "".join("- Never push export %d without a dry run, because the nightly job "
+                    "overwrites the shared bucket.\n" % i for i in range(12))
+    sec = "## Export rules\n\n" + rules
+    rc, out, err = run(write(tmp, "floor_fresh.md", "# P\n\n" + sec + "\n"))
+    floor = lambda o: o.split("FLOOR")[-1].split("SUMMARY")[0]
+    check("CONTROL: a fresh rule section is counted at retention",
+          "1 RULE-shaped sections over 900 ch" in floor(out)
+          and "already carry" not in floor(out), floor(out)[:500])
+    est_fresh = int(re.search(r"ESTIMATE  ~(\d+) ch", out).group(1))
+    rc, out, err = run(write(tmp, "floor_done.md", "# P\n\n" + sec
+                             + "\nEvidence: `CLAUDE_DECISIONS_2026-09.md`, same heading.\n"))
+    check("a rule section with a Phase D pointer is reported as already done",
+          "1 RULE-shaped sections already carry a Phase D evidence pointer" in floor(out)
+          and "0 RULE-shaped sections over 900 ch" in floor(out), floor(out)[:500])
+    est_done = int(re.search(r"ESTIMATE  ~(\d+) ch", out).group(1))
+    check("and its estimate keeps the section at full size", est_done > est_fresh + 500,
+          "fresh=%d done=%d" % (est_fresh, est_done))
+    rc, out, err = run(write(tmp, "floor_mention.md", "# P\n\n" + sec
+                             + "- Never copy `README.md` under the same heading as another section.\n"))
+    check("a rule that only MENTIONS a .md file and 'same heading' is not a done pointer",
+          "already carry" not in floor(out) and "1 RULE-shaped sections over 900 ch" in floor(out),
+          floor(out)[:500])
+
     if not checks:
         print("0/0 passed -- the harness ran NO checks, which is a harness bug")
         return 1

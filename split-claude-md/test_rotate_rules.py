@@ -224,9 +224,9 @@ def always_block_checks(check, sandbox):
     for shape in ("a", "b"):
         d, p, r = sandbox(g_c1(shape, "- " + G_RULE))
         rc, out, err = run(p, *(G_ARGS + r))
-        check("G closer shapes, rotate.py dry run, shape (%s): exit 0, the counts line '1 rule sentence(s) ... "
+        check("G closer shapes, rotate.py dry run, shape (%s): exit 3, the counts line '1 rule sentence(s) ... "
               "1 refused on --apply' and exactly one draft line '- %s (kept from ...)'" % (shape, G_RULE),
-              rc == 0 and counts_lines(out) == [g_counts(1, 0, 0, 1)]
+              rc == 3 and counts_lines(out) == [g_counts(1, 0, 0, 1)]
               and draft_lines(out) == ["- " + G_RULE + G_FROM], "rc=%d %r %r" % (rc, counts_lines(out),
                                                                                   draft_lines(out)))
         before = read(p)
@@ -433,7 +433,7 @@ def main():
     ui = w.index(unused) if unused in w else None
     check("E a duplicate --accept: the first lets through 1 item with its item line, the UNUSED entry "
           "has no item line under it",
-          rc == 0 and w.count(unused) == 1 and ui is not None
+          rc == 3 and w.count(unused) == 1 and ui is not None
           and not (ui + 1 < len(w) and w[ui + 1].startswith("  - "))
           and w.count('- --accept "queue" (let through 1 item(s))') == 1
           and w.count("  - Never touch the queue.") == 1, "rc=%d %r" % (rc, w))

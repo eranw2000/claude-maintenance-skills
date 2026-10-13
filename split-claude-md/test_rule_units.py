@@ -348,11 +348,11 @@ def fence_checks(check, mk, sandbox):
     c6_at = loss.index(c6_lazy) if c6_lazy in loss else -1
     check("A change 6: a fence opened in one dated record holds a dated '## ' example; the rules draft and the "
           "in-memory loss check read the record alike, now both listing and blocking the fenced rule: "
-          "dry run exit 0, no Traceback, no CANNOT TELL, no MISSING RULE line on stdout, the counts "
+          "dry run exit 3, no Traceback, no CANNOT TELL, no MISSING RULE line on stdout, the counts "
           "line '1 rule sentence(s) ... 1 refused on --apply'; REPORT.dry.md's Rules draft holds the draft "
           "line and its MISSING RULE line, its Loss check the LAZY-ONLY rule item with its rule detail line, "
           "the POINTED (archive) command item, and '1 blocking item(s) not waived'",
-          rc == 0 and "Traceback" not in err
+          rc == 3 and "Traceback" not in err
           and not [l for l in out.splitlines() if l.startswith("CANNOT TELL: ")] and not missing(out)
           and c6_counts == ["RULES DRAFT: 1 rule sentence(s) in the moving records; 0 already kept, "
                             "0 kept in --hoisted, 0 let through by --narrative, 1 refused on --apply"]
@@ -516,7 +516,7 @@ def main():
     rc, out, err = run(p, *(BASE + r))
     want = '- %s (kept from "%s", 2026-01-10)' % (H_RULE, H_TITLE)
     dl = draft_lines(out)
-    check("U3 the dry run prints the heading as a draft line", rc == 0 and dl == [want],
+    check("U3 the dry run prints the heading as a draft line", rc == 3 and dl == [want],
           "rc=%d %r" % (rc, dl))
     d, p, r = sandbox(H_CLAUDE)
     rc, out, err = run(p, *(BASE + r + ["--apply"]))
@@ -556,7 +556,7 @@ def main():
     rc, out, err = run(p, *(BASE + r))
     dl = draft_lines(out)
     check("U6 a unit with one rule sentence kept outside and one not is not [already kept]",
-          rc == 0 and dl == ['- %s %s (kept from "%s", 2026-01-10)' % (F_X, F_Y, F_TITLE)],
+          rc == 3 and dl == ['- %s %s (kept from "%s", 2026-01-10)' % (F_X, F_Y, F_TITLE)],
           "rc=%d %r" % (rc, dl))
     d, p, r = sandbox(F_CLAUDE)
     rc, out, err = run(p, *(BASE + r + ["--apply"]))

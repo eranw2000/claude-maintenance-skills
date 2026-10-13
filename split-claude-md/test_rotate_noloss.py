@@ -485,8 +485,9 @@ def main():
     dry = read(os.path.join(d, "split_2026-02-15", "REPORT.dry.md"))
     sec = section(dry, "Open-work evidence")
     ti = next((i for i, l in enumerate(sec) if OW_TITLE in l), None)
-    check("open work: the dry run exits 0 and names the open item on stdout with its key",
-          rc == 0 and any(OW_FILE in l and "key" in l for l in out.splitlines()), out[-400:])
+    check("open work: the dry run exits 3, says --apply WOULD REFUSE, and names the open item on stdout with its key",
+          rc == 3 and "--apply WOULD REFUSE" in out
+          and any(OW_FILE in l and "key" in l for l in out.splitlines()), out[-400:])
     check("open work: REPORT.dry.md lists the whole title, then the whole item (continuation joined) with key: <token>",
           ti is not None and any(OW_ITEM in l and re.search(r"key: `?" + re.escape(OW_FILE), l)
                                  for l in sec[ti + 1:]), sec[:6])

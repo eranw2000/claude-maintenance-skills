@@ -241,7 +241,7 @@ def main():
     pl = [l for l in lines_starting(out, "PREDICTED FAIL moved") if BETA[:40] in l]
     check("F4a build_final appending a record twice: the dry run predicts two PREDICTED FAIL "
           "moved lines for that title and 2 failure(s)",
-          rc == 0 and len(pl) == 2 and (pred(out) or (0, -1))[1] == 2, "rc=%r pred=%r %r" % (rc, pred(out), pl))
+          rc == 3 and len(pl) == 2 and (pred(out) or (0, -1))[1] == 2, "rc=%r pred=%r %r" % (rc, pred(out), pl))
     rc, out = inproc([p] + ARGS + ["--root", root, "--apply"], patch)
     fl = [l for l in lines_starting(out, "FAIL moved") if BETA[:40] in l]
     check("F4a --apply exits 2 with two FAIL moved lines for that title, the undo command and "
@@ -266,8 +266,8 @@ def main():
     patch = [(rotate, "build_final", drop_record(EPSILON, MAY))]
     rc, out = inproc([p] + ARGS + ["--root", root], patch)
     check("F5a a record left out of its archive: the dry run prints PREDICTED FAIL moved "
-          "(difference 0) and exits 0",
-          rc == 0 and any(EPSILON[:40] in l and "arch=0 before=0" in l
+          "(difference 0) and exits 3",
+          rc == 3 and any(EPSILON[:40] in l and "arch=0 before=0" in l
                           for l in lines_starting(out, "PREDICTED FAIL moved")),
           "rc=%r %r" % (rc, lines_starting(out, "PREDICTED")))
     shutil.rmtree(os.path.join(d, RUN), ignore_errors=True)
@@ -291,8 +291,9 @@ def main():
     d, p = sandbox(COLLIDING)
     rc, out = run(p, *(ARGS + ["--root", root]))
     pl = lines_starting(out, "PREDICTED FAIL moved")
-    check("F6 COLLIDING: the dry run exits 0 with one PREDICTED FAIL moved line",
-          rc == 0 and len(pl) == 1 and "Old record that is going to move" in pl[0],
+    check("F6 COLLIDING: the dry run exits 3 with one PREDICTED FAIL moved line, and says --apply "
+          "would WRITE then fail (not that it would refuse)",
+          rc == 3 and "--apply would WRITE" in out and "WOULD REFUSE" not in out and len(pl) == 1 and "Old record that is going to move" in pl[0],
           "rc=%d %r" % (rc, pl))
     summ = [m for m in (SUMMARY_RE.match(l) for l in read(os.path.join(d, RUN, "REPORT.dry.md")).splitlines())
             if m]
@@ -306,7 +307,7 @@ def main():
     d, p = sandbox(KEPT_DUP)
     rc, out = run(p, *(KD_ARGS + ["--root", root]))
     check("F6 a kept record whose body line also sits in the preamble: the dry run predicts "
-          "PREDICTED FAIL kept", rc == 0 and len(lines_starting(out, "PREDICTED FAIL kept")) == 1,
+          "PREDICTED FAIL kept", rc == 3 and len(lines_starting(out, "PREDICTED FAIL kept")) == 1,
           "rc=%d %r" % (rc, lines_starting(out, "PREDICTED")))
 
     # ---------------------------------------------------------------- F7

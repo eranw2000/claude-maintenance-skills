@@ -1316,6 +1316,17 @@ def before_manifest(args, left):
             print("  PREDICTED " + f)
         if write_dry("dry run"):
             return 2
+        # A dry run whose --apply would refuse is a finding, not a pass: exit 3,
+        # so a caller reading only the status cannot take it for "fine".
+        if blocking or refused or missing_rules:
+            print(f"\nDRY RUN: --apply WOULD REFUSE ({verdict}). Exit 3. "
+                  f"Report: {run_name}/REPORT.dry.md")
+            return 3
+        if pred[1]:
+            print(f"\nDRY RUN: --apply would WRITE every file and then fail its archive check "
+                  f"(exit 2, an undo to run): {len(pred[1])} predicted fragment failure(s). "
+                  f"Exit 3. Report: {run_name}/REPORT.dry.md")
+            return 3
         print(f"\nDRY RUN. Re-run with --apply to write. Report: {run_name}/REPORT.dry.md")
         return 0
     if blocking or refused or missing_rules:
