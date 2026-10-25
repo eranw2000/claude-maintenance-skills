@@ -18,6 +18,8 @@ rows.json:
      "rows": [{"feature": "", "theirs": "", "mine": "", "action": "Enhance", "notes": ""}],
      "suggested_order": ["1. ..."]}
 action is one of: Enhance, Change, Keep mine, Nothing to do.
+A row may also carry "updated": which of our artifacts the row changed once it was built.
+When any row has it, the grid gains a last column, "Feature updated".
 
 Tabs: `Comparison` (header frozen, column E a dropdown with a fill colour per action, a
 filter over the table) and `Summary` (sources, counts, what each word means, suggested
@@ -29,6 +31,7 @@ Exit 0 ok; 2 bad input (the message names the row); 1 when Google refuses a requ
 """
 import argparse
 import json
+import re
 import os
 import sys
 from pathlib import Path
@@ -48,6 +51,13 @@ ACTION_MEANING = {
 }
 WIDTHS = [(0, 1, 40), (1, 2, 190), (2, 3, 330), (3, 4, 330), (4, 5, 130), (5, 6, 400)]
 ROW_KEYS = ("feature", "theirs", "mine", "action", "notes")
+UPDATED, UPDATED_HEADER = "updated", "Feature updated"  # optional row key, last column
+# An "ours" cell that starts a sentence with None / No / Nothing claims we lack something.
+# Such a claim is a search result, so the row must say what was searched, where.
+# A search in the other skill's words ("risk register") does not find ours
+# ("Risks and Mitigations").
+ABSENCE = re.compile(r"(?:^\s*|[.!?]\s+)(?:None|No|Nothing|Not covered|Missing)\b")
+SEARCHED = "Searched:"
 
 
 # ---------------------------------------------------------------- input
@@ -84,16 +94,30 @@ def load(path):
                 sys.exit(f"rows.json: row {i} {key!r} must be text")
         if not row["feature"].strip():
             sys.exit(f"rows.json: row {i} has an empty feature")
+        if not isinstance(row.get(UPDATED, ""), str):
+            sys.exit(f"rows.json: row {i} {UPDATED!r} must be text")
         if row["action"] not in ACTIONS:
             sys.exit(f"rows.json: row {i} action {row['action']!r} is not one of {ACTIONS}")
+        if ABSENCE.search(row["mine"]) and SEARCHED not in row["mine"] + row["notes"]:
+            sys.exit(f"rows.json: row {i} says ours lacks something; add '{SEARCHED} <words> "
+                     f"in <where>' to its mine or notes cell, searched in OUR words")
     order = data.setdefault("suggested_order", [])
     if not isinstance(order, list) or not all(isinstance(x, str) for x in order):
         sys.exit("rows.json: 'suggested_order' must be a list of text lines")
     return data
 
 
+def has_updated(data):
+    return any(UPDATED in r for r in data["rows"])
+
+
 def headers(data):
-    return ["#", "Feature", data["theirs"]["name"], data["mine"]["name"], "Action", "Notes"]
+    base = ["#", "Feature", data["theirs"]["name"], data["mine"]["name"], "Action", "Notes"]
+    return base + [UPDATED_HEADER] if has_updated(data) else base
+
+
+def widths(data):
+    return WIDTHS + [(6, 7, 330)] if has_updated(data) else WIDTHS
 
 
 def counts(data):
@@ -130,10 +154,13 @@ def comparison_rows(data):
     out = [[cell(h, bold=True, colour="FFFFFF", fill="1F3864", valign="MIDDLE")
             for h in headers(data)]]
     for i, row in enumerate(data["rows"], 1):
-        out.append([cell(i, bold=True, halign="CENTER"), cell(row["feature"], bold=True),
-                    cell(row["theirs"]), cell(row["mine"]),
-                    cell(row["action"], bold=True, halign="CENTER", valign="MIDDLE"),
-                    cell(row["notes"])])
+        line = [cell(i, bold=True, halign="CENTER"), cell(row["feature"], bold=True),
+                cell(row["theirs"]), cell(row["mine"]),
+                cell(row["action"], bold=True, halign="CENTER", valign="MIDDLE"),
+                cell(row["notes"])]
+        if has_updated(data):
+            line.append(cell(row.get(UPDATED, "")))
+        out.append(line)
     return out
 
 
@@ -268,8 +295,9 @@ def sheet_url(sid):
 def read_back(svc, sid, data):
     """The one sanity check: the grid holds every row, and column E really is a dropdown."""
     n = len(data["rows"]) + 1
+    last = chr(ord("A") + len(headers(data)) - 1)
     got = svc.spreadsheets().values().get(
-        spreadsheetId=sid, range=f"{GRID_TAB}!A1:F{n}").execute().get("values", [])
+        spreadsheetId=sid, range=f"{GRID_TAB}!A1:{last}{n}").execute().get("values", [])
     assert got and got[0] == headers(data), f"header read back as {got[:1]}"
     assert len(got) == n, f"expected {n} rows, read {len(got)}"
     assert [r[4] for r in got[1:]] == [r["action"] for r in data["rows"]], "Action column differs"
@@ -305,6 +333,8 @@ def render_md(data, sid):
                   f"- Action: {row['action']}"]
         if row["notes"]:
             lines.append(f"- Notes: {row['notes']}")
+        if row.get(UPDATED):
+            lines.append(f"- {UPDATED_HEADER}: {row[UPDATED]}")
         lines.append("")
     return "\n".join(lines)
 
@@ -326,8 +356,8 @@ def main(argv=None):
         return 0
     svc = sheets_service()
     sid, tabs, cf = open_or_create(svc, data, id_file)
-    reqs = rewrite(tabs[GRID_TAB], comparison_rows(data), WIDTHS, 1, 2, cf[GRID_TAB])
-    reqs += action_column(tabs[GRID_TAB], len(data["rows"]))
+    reqs = rewrite(tabs[GRID_TAB], comparison_rows(data), widths(data), 1, 2, cf[GRID_TAB])
+    reqs += action_column(tabs[GRID_TAB], len(data["rows"]), len(headers(data)))
     reqs += rewrite(tabs[SUMMARY_TAB], summary_rows(data), [(0, 1, 220), (1, 2, 640)], 0, 0,
                     cf[SUMMARY_TAB])
     svc.spreadsheets().batchUpdate(spreadsheetId=sid, body={"requests": reqs}).execute()
