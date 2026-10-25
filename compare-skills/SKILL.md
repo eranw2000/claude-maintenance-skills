@@ -54,7 +54,10 @@ that theirs lacks. The two description cells quote or closely paraphrase the sou
 side that lacks the feature reads "None." Before writing that ours lacks something, search
 your skills, hooks, rules, agents, CLAUDE.md files and memory for it: a feature owned by
 another artifact of ours is "Nothing to do" with the
-owner named, never "missing".
+owner named, never "missing". Search for what the feature DOES, in the words OUR files would
+use, not only the name theirs gives it: their "risk register" is our "Risks and Mitigations"
+table. Read each hit before deciding, and write `Searched: <words> in <where>` in the row;
+the Sheet script refuses a None / No / Nothing cell without it.
 
 Done when every heading of both files is accounted for by a row; walk the headings to check.
 

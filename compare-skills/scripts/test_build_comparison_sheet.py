@@ -30,7 +30,8 @@ def sample():
             {"feature": "Size", "theirs": "4.4K", "mine": "20.8K",
              "action": "Change", "notes": "Split it."},
             {"feature": "Packaging for another tool", "theirs": "openai.yaml", "mine": "None.",
-             "action": "Nothing to do", "notes": ""},
+             "action": "Nothing to do",
+             "notes": "Searched: openai, yaml, agents.md in skills, agents, hooks: 0 hits."},
         ],
         "suggested_order": ["1. Change: split (row 3).", "2. Enhance: session log (row 2)."],
     }
@@ -112,6 +113,37 @@ class Load(unittest.TestCase):
         with self.assertRaises(SystemExit):
             bcs.load(write(data))
 
+    def test_an_absence_claim_without_its_search_exits_naming_the_row(self):
+        # A row that says ours lacks a table, with no search named.
+        data = sample()
+        data["rows"].append({"feature": "A risk table", "theirs": "One row per risk.",
+                             "mine": "Ours names risks in one line. No separate table.",
+                             "action": "Enhance", "notes": "Nice-to-have."})
+        with self.assertRaises(SystemExit) as ctx:
+            bcs.load(write(data))
+        self.assertIn("row 5", str(ctx.exception))
+        self.assertIn("Searched:", str(ctx.exception))
+
+    def test_a_none_cell_needs_its_search_too(self):
+        data = sample()
+        data["rows"][3]["notes"] = ""
+        with self.assertRaises(SystemExit) as ctx:
+            bcs.load(write(data))
+        self.assertIn("row 4", str(ctx.exception))
+
+    def test_not_covered_and_missing_are_absence_claims_too(self):
+        for cell in ("Not covered.", "Partly. Missing in ours."):
+            data = sample()
+            data["rows"][0]["mine"] = cell
+            with self.assertRaises(SystemExit, msg=cell):
+                bcs.load(write(data))
+
+    def test_a_cell_that_claims_no_absence_needs_no_search(self):
+        data = sample()
+        data["rows"][3]["mine"] = "Covered by skills/x/reference/pack.md; nothing to add."
+        data["rows"][3]["notes"] = ""
+        bcs.load(write(data))
+
     def test_control_a_good_file_does_not_exit(self):
         bcs.load(write(sample()))  # the checks above fire only on the broken input
 
@@ -169,6 +201,36 @@ class Requests(unittest.TestCase):
         self.assertEqual(props[2]["rowCount"], 2)
         self.assertLess(kinds.index("updateSheetProperties"), kinds.index("updateCells"))
         self.assertNotIn("deleteSheet", kinds)
+
+    def test_updated_rows_add_a_last_column_to_grid_filter_and_twin(self):
+        data = sample()
+        data["rows"][1]["updated"] = "skills/x/SKILL.md step 1"
+        data = bcs.load(write(data))
+        self.assertEqual(bcs.headers(data)[-1], "Feature updated")
+        rows = bcs.comparison_rows(data)
+        self.assertTrue(all(len(r) == 7 for r in rows))
+        self.assertEqual(rows[2][6]["userEnteredValue"]["stringValue"], "skills/x/SKILL.md step 1")
+        self.assertEqual(rows[1][6]["userEnteredValue"]["stringValue"], "")
+        self.assertIn((6, 7, 330), bcs.widths(data))
+        flt = bcs.action_column(7, 4, len(bcs.headers(data)))[-1]["setBasicFilter"]
+        self.assertEqual(flt["filter"]["range"]["endColumnIndex"], 7)
+        md = bcs.render_md(data, "SHEETID")
+        self.assertIn("- Feature updated: skills/x/SKILL.md step 1", md)
+        self.assertEqual(md.count("- Feature updated:"), 1)
+
+    def test_control_no_updated_key_keeps_six_columns(self):
+        data = bcs.load(write(sample()))
+        self.assertEqual(len(bcs.headers(data)), 6)
+        self.assertTrue(all(len(r) == 6 for r in bcs.comparison_rows(data)))
+        self.assertEqual(bcs.widths(data), bcs.WIDTHS)
+        self.assertNotIn("Feature updated", bcs.render_md(data, ""))
+
+    def test_a_non_text_updated_exits_naming_the_row(self):
+        data = sample()
+        data["rows"][2]["updated"] = ["a list"]
+        with self.assertRaises(SystemExit) as ctx:
+            bcs.load(write(data))
+        self.assertIn("row 3", str(ctx.exception))
 
     def test_summary_lists_counts_and_meanings(self):
         data = bcs.load(write(sample()))
