@@ -104,6 +104,12 @@ SAVE_COMMANDS = ("/close-session", "/save-context")
 # session was BUSY, not idle, and blocking it would throw away the result.
 HARNESS_PROMPT_PREFIXES = ("<task-notification>",)
 
+# Prompts a timer submits: the cron job /keep-alive arms fires this exact text
+# every 30 minutes while work runs. After a sleep it can arrive past the hour,
+# and refusing it stops the save keep-alive exists to make. Exact match only, so
+# a longer prompt that starts with it is still treated as a person typing.
+TIMED_PROMPTS = ("/keep-alive tick",)
+
 # Environment markers of a session the user reaches from somewhere else. A
 # hard block there strands them: from a phone the prompt just vanishes, and a
 # forced /close-session tears down background agents a long run is waiting
@@ -227,7 +233,8 @@ def saw_save_skill(state: dict, transcript_path) -> bool:
 
 def is_harness_prompt(prompt: str) -> bool:
     """True when the harness, not a person, submitted this prompt."""
-    return (prompt or "").lstrip().startswith(HARNESS_PROMPT_PREFIXES)
+    text = (prompt or "").strip()
+    return text.startswith(HARNESS_PROMPT_PREFIXES) or text in TIMED_PROMPTS
 
 
 def session_mode() -> str:
