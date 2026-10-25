@@ -1,8 +1,8 @@
 # Claude Code maintenance skills
 
-Six Claude Code skills for keeping a project's knowledge and your Claude Code setup healthy over time: orient yourself when you come back to a project, keep its `CLAUDE.md` from bloating, recover anything useful left behind in old session transcripts, turn a helper script Claude wrote into a permanent tool of a skill, improve the development workflow when something slipped past it, and compare one of your skills with somebody else's.
+Six Claude Code skills and one hook for keeping a project's knowledge and your Claude Code setup healthy over time: orient yourself when you come back to a project, keep its `CLAUDE.md` from bloating, recover anything useful left behind in old session transcripts, turn a helper script Claude wrote into a permanent tool of a skill, improve the development workflow when something slipped past it, compare one of your skills with somebody else's, and save a session before it goes idle or grows too large.
 
-Each skill is a self-contained directory (a `SKILL.md`). Claude can invoke one when its description matches what you are doing, or you can ask for it by name.
+Each skill is a self-contained directory (a `SKILL.md`). Claude can invoke one when its description matches what you are doing, or you can ask for it by name. The hook is a single script under `hooks/`.
 
 ## When each one runs
 
@@ -19,6 +19,16 @@ Source: [docs/maintenance-flow.drawio](docs/maintenance-flow.drawio) (editable i
 - **`improve-dev-workflow`**: the continuous-improvement loop for the development process itself. When something reached you or a reviewer that a skill, hook, agent or rule should have caught, it runs Observe, Diagnose, Verify, Learn and Improve: it reads the session transcript, lists each incident with quoted evidence, looks through four lenses (time lost finding things, checks that already exist, tool cost, missing access to a log or service), sorts each cause into one of four classes (process, missing context, weak rule, unreliable code), and fixes it in the smallest place that loads by itself next time. An improvement is done only when each fix has a check that runs and goes red on the miss (a hook, a test, or a replay of the original incident), or is recorded as words-only with the reason. Each step ends on a "Done when" line. `save-context` step 7 (in the multi-phase-skills-framework pack) asks at the end of a session whether to run it, so `close-session` reaches it too.
 - **`compare-skills`**: compares one of your skills, commands or agents with somebody else's on the same topic, feature by feature. It fetches theirs from a GitHub link or a path (with the files it depends on), reads both in full, writes one row per feature with an action for you to confirm (Enhance, Change, Keep mine, Nothing to do) and a note saying what the change would be, and saves the table as `COMPARISON.md`. A Google Sheet with a dropdown per row is optional. It recommends and never edits either skill.
 
+## The hook
+
+- **`hooks/session-idle-guard.py`**: keeps a session saved and stops work on a cold, stale session. It runs on two events.
+  - On each prompt, it measures how long the session was idle. After 50 minutes idle it asks Claude to run the `close-session` skill, print a saved line and stop. After an hour idle it refuses the prompt and asks you to start a fresh session, because the one-hour prompt cache has expired. The `close-session`, `save-context` and `improve-dev-workflow` commands always go through, and appending `#continue-anyway` to a prompt lets it through.
+  - In a background or remote session nothing is blocked or closed. After an hour idle, Claude first asks one question with two buttons, **Continue in this session** or **Stop, continue in a fresh session**, and waits for your pick. Stop runs the `save-context` skill and tells you to start a fresh session with the `new-session` command.
+  - At the end of each turn, it asks Claude to run the `save-context` skill when the session grew by 200,000 tokens since the last save, first passed 600,000 tokens, or has not been saved for four hours. Past 500,000 tokens it shows one reminder to close the session before you walk away.
+  - A finished background task (a `<task-notification>` prompt) counts as activity and is never blocked.
+
+  Set `CLAUDE_IDLE_GUARD_OFF=1` to turn it off, or `CLAUDE_IDLE_GUARD_NO_SAVE=1` to keep the idle bands without the turn-end save. The messages to Claude say "the user"; set `USER` near the top of the script to your own name if you prefer. It keeps one small state file per session in a `.session-idle` folder beside itself.
+
 ## Install
 
 Each subdirectory here is a self-contained skill. Copy or symlink the skill directories into your `~/.claude/skills/` so Claude Code picks them up:
@@ -32,6 +42,36 @@ cp -R claude-maintenance-skills/project-status \
       claude-maintenance-skills/compare-skills \
       ~/.claude/skills/
 ```
+
+To use the hook, copy it into `~/.claude/hooks/` and wire it to both events in `~/.claude/settings.json`:
+
+```bash
+mkdir -p ~/.claude/hooks
+cp claude-maintenance-skills/hooks/session-idle-guard.py ~/.claude/hooks/
+```
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 $HOME/.claude/hooks/session-idle-guard.py" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 $HOME/.claude/hooks/session-idle-guard.py" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+It needs `python3` (3.9+) and nothing else. The saves it asks for use the `save-context` and `close-session` skills from the multi-phase-skills-framework pack, and the fresh-session step uses the `new-session` command from the claude-commands pack.
 
 ## Assumptions
 
@@ -48,7 +88,7 @@ These skills assume the standard Claude Code layout: a per-project data director
 
 `compare-skills` uses the GitHub CLI (`gh`) to fetch a skill from GitHub. Its optional Google Sheet needs `google-api-python-client` and `google-auth-oauthlib`, a desktop OAuth client from your own Google Cloud project with the Sheets API switched on, and a one-time sign-in with `compare-skills/scripts/mint_sheets_token.py`. The markdown table needs none of these.
 
-The session-lifecycle skills that pair naturally with these (`save-context`, `close-session`, `todo`, `new-session`) live in the separate multi-phase-skills-framework pack, so they are not duplicated here. Its `save-context` step 7 is what calls `improve-dev-workflow` at the end of a session, and its `rules/improve-dev-workflow.md` is the standing rule for when to run it mid-session.
+The session-lifecycle skills that pair naturally with these (`save-context`, `close-session`, `todo`) live in the separate multi-phase-skills-framework pack, and the `new-session` command lives in the claude-commands pack, so they are not duplicated here. The `save-context` step 7 is what calls `improve-dev-workflow` at the end of a session, and its `rules/improve-dev-workflow.md` is the standing rule for when to run it mid-session.
 
 ## Conventions
 
