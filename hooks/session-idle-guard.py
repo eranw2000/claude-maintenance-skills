@@ -42,10 +42,10 @@ Two things are never blocked:
 
   a <task-notification> prompt  ->  the harness reporting finished work. It is
                                     activity, so it stamps the clock and passes.
-  a background or remote session ->  nothing is blocked or closed; past an hour
-                                    Claude asks first whether to continue here
-                                    or stop for a fresh session. See
-                                    session_mode().
+  a background or remote session ->  never force-closed. Past an hour the prompt
+                                    is still refused, through the JSON block
+                                    form, so no model call is made and the
+                                    reason reaches the user. See session_mode().
 
 Escape hatches: CLAUDE_IDLE_GUARD_OFF=1 in the environment disables it entirely
 (for scheduled or background sessions, where a blocked prompt would break the
@@ -107,7 +107,7 @@ HARNESS_PROMPT_PREFIXES = ("<task-notification>",)
 # Environment markers of a session the user reaches from somewhere else. A
 # hard block there strands them: from a phone the prompt just vanishes, and a
 # forced /close-session tears down background agents a long run is waiting
-# on. In these sessions nothing is blocked; past an hour Claude asks first.
+# on. In these sessions nothing is force-closed; past an hour the prompt is refused.
 #   CLAUDE_JOB_DIR                 set in a background job (claude --bg)
 #   CLAUDE_CODE_SESSION_ATTENDED   "0" when no terminal is attached
 #   CLAUDE_CODE_BRIDGE_SESSION_ID  set when the session is bridged to claude.ai
@@ -124,9 +124,6 @@ EXPIRED_LINE = (
 )
 # Who the messages to Claude name. Put your own name here if you like.
 USER = "the user"
-# The two buttons of the soft over-an-hour band.
-SOFT_CONTINUE_LABEL = "Continue in this session"
-SOFT_STOP_LABEL = "Stop, continue in a fresh session"
 
 
 def state_path(session_id: str) -> str:
@@ -242,44 +239,6 @@ def session_mode() -> str:
     return "local"
 
 
-def soft_expired_output(gap: float, mode: str) -> str:
-    """The over-an-hour band for a session driven from elsewhere.
-
-    Not a block, but not a silent pass either: the choice belongs to the user,
-    so Claude asks it as two buttons BEFORE any work.
-    """
-    hours = gap / 3600.0
-    return json.dumps({
-        "systemMessage": (
-            "Idle guard: %.1f hours since this session was last active, so the "
-            "cache is cold and this turn costs more. Not blocked, because this is "
-            "a %s session. Claude will ask first: continue here, or stop and "
-            "continue in a fresh session." % (hours, mode)
-        ),
-        "hookSpecificOutput": {
-            "hookEventName": "UserPromptSubmit",
-            "additionalContext": "\n".join([
-                "IDLE GUARD (soft, %s session): %.1f hours since the last "
-                "activity, so the cache is cold." % (mode, hours),
-                "",
-                "Before ANY other tool call, and before carrying out the request, "
-                "ask %s with AskUserQuestion: ONE question, exactly these two "
-                "options, in this order:" % USER,
-                "  1. \"%s\" - do the request here." % SOFT_CONTINUE_LABEL,
-                "  2. \"%s\" - save this session so a fresh one can pick it up."
-                % SOFT_STOP_LABEL,
-                "Do NOT carry out the request until %s picks." % USER,
-                "- Option 1 picked: carry out the request normally.",
-                "- Option 2 picked: run the /save-context skill in full, then end "
-                "with one line telling %s to start a fresh session and run "
-                "/new-session there. Do not do the request." % USER,
-                "Either way: Do NOT run /close-session and do NOT stop background "
-                "agents, tasks or a long-running loop that are still running.",
-            ]),
-        },
-    })
-
-
 def session_tokens(transcript_path):
     """Prefix size in tokens at the last assistant turn, or None if unreadable.
 
@@ -356,6 +315,7 @@ def expired_message(gap: float) -> str:
         "You can still run /close-session, /save-context or "
         "/improve-dev-workflow here. To work in this session anyway, resend the "
         "prompt with %s appended." % OVERRIDE_MARKER,
+        "To start fresh, open a new session and run /new-session there.",
     ])
 
 
@@ -544,30 +504,29 @@ def handle_prompt(payload: dict, now: float) -> int:
     last = state.get("last_active")
     gap = max(0.0, now - float(last)) if isinstance(last, (int, float)) else 0.0
 
-    if mode != "local":
-        # Never block and never force a close where the user may be remote. A stale
-        # sticky flag from before is cleared so it cannot bite later either.
-        was_expired = bool(state.get("expired"))
-        state["expired"] = False
-        state["last_active"] = now
-        write_state(path, state)
-        if was_expired or gap >= EXPIRED_SECONDS:
-            print(soft_expired_output(max(gap, float(EXPIRED_SECONDS)), mode))
-        return 0
-
     # sticky: once expired, every later prompt in this session is refused too
     if state.get("expired") or gap >= EXPIRED_SECONDS:
         state["expired"] = True
         state["last_active"] = now
         write_state(path, state)
         shown = gap if gap >= EXPIRED_SECONDS else float(EXPIRED_SECONDS)
+        if mode != "local":
+            # Refused here, in the hook, because any answer from Claude would
+            # already pay the cold re-send this band exists to avoid. Claude Code
+            # hooks reference, UserPromptSubmit: "block" "prevents the prompt from
+            # being processed and erases it from context", and `reason` is "Shown
+            # to the user when decision is block. Not added to context."
+            print(json.dumps({"decision": "block", "reason": expired_message(shown)}))
+            return 0
         print(expired_message(shown), file=sys.stderr)
         return 2                               # blocks the prompt; stderr goes to the user
 
     state["last_active"] = now
     write_state(path, state)
 
-    if gap >= AUTOCLOSE_SECONDS:
+    # Never force a close where the user may be remote: a close tears down
+    # background agents a long run is waiting on.
+    if gap >= AUTOCLOSE_SECONDS and mode == "local":
         print(json.dumps({
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",   # dropped silently without this

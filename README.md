@@ -23,7 +23,7 @@ Source: [docs/maintenance-flow.drawio](docs/maintenance-flow.drawio) (editable i
 
 - **`hooks/session-idle-guard.py`**: keeps a session saved and stops work on a cold, stale session. It runs on two events.
   - On each prompt, it measures how long the session was idle. After 50 minutes idle it asks Claude to run the `close-session` skill, print a saved line and stop. After an hour idle it refuses the prompt and asks you to start a fresh session, because the one-hour prompt cache has expired. The `close-session`, `save-context` and `improve-dev-workflow` commands always go through, and appending `#continue-anyway` to a prompt lets it through.
-  - In a background or remote session nothing is blocked or closed. After an hour idle, Claude first asks one question with two buttons, **Continue in this session** or **Stop, continue in a fresh session**, and waits for your pick. Stop runs the `save-context` skill and tells you to start a fresh session with the `new-session` command.
+  - In a background or remote session nothing is closed for you, and after an hour idle the prompt is still refused, before any model call, so a cold session costs nothing until you choose. The message shows your choices: start a fresh session with the `new-session` command, or resend the prompt with `#continue-anyway`.
   - At the end of each turn, it asks Claude to run the `save-context` skill when the session grew by 200,000 tokens since the last save, first passed 600,000 tokens, or has not been saved for four hours. Past 500,000 tokens it shows one reminder to close the session before you walk away.
   - A finished background task (a `<task-notification>` prompt) counts as activity and is never blocked.
 
