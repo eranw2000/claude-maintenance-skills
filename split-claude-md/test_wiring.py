@@ -21,6 +21,12 @@ Run:  python3 test_wiring.py
 """
 
 import os
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+if __name__ == "__main__":
+    for _stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
 import re
 import shutil
 import subprocess
@@ -48,7 +54,7 @@ def read(path):
 
 def help_flags(script):
     p = subprocess.run([sys.executable, os.path.join(HERE, script), "--help"],
-                       capture_output=True, text=True, cwd=HERE)
+                       capture_output=True, text=True, cwd=HERE, encoding="utf-8", errors="replace")
     return set(HELP_FLAG_RE.findall(p.stdout)) - {"--help"}
 
 
@@ -84,7 +90,7 @@ def section(text, heading_re):
 
 def pointers_rc(path):
     p = subprocess.run([sys.executable, os.path.join(HERE, "pointers.py"), path,
-                        "--root", HERE], capture_output=True, text=True, cwd=HERE)
+                        "--root", HERE], capture_output=True, text=True, cwd=HERE, encoding="utf-8", errors="replace")
     return p.returncode, p.stdout
 
 
@@ -228,12 +234,12 @@ def main():
     d = os.path.realpath(tempfile.mkdtemp())
     try:
         p = os.path.join(d, "CLAUDE.md")
-        with open(p, "w", encoding="utf-8") as fh:
+        with open(p, "w", encoding="utf-8", newline="") as fh:
             fh.write(test_rotate.SECTION)
         r = subprocess.run([sys.executable, os.path.join(HERE, "rotate.py"), p,
                             "--convention", "section", "--cut-date", "2026-07-01",
                             "--today", "2026-08-15", "--apply", "--root", d],
-                           capture_output=True, text=True, cwd=d)
+                           capture_output=True, text=True, cwd=d, encoding="utf-8", errors="replace")
         got_line = [l for l in read(p).splitlines() if l.startswith("Last split run:")]
         idx = read(os.path.join(d, "CLAUDE_DECISIONS_INDEX.md"))
         got_row = [l for l in idx.splitlines() if l.startswith("| 2026-08-15 |")]

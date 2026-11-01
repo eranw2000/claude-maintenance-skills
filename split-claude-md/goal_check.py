@@ -30,6 +30,12 @@ Scenarios (Definition of done):
 These checks are fixed: a change may add a check, never weaken one to match the code.
 """
 import json
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+if __name__ == "__main__":
+    for _stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
 import os
 import re
 import shutil
@@ -54,7 +60,7 @@ def mk():
 
 def write(path, text):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fh:
+    with open(path, "w", encoding="utf-8", newline="") as fh:
         fh.write(text)
     return path
 
@@ -478,7 +484,7 @@ def scenario_7():
     if man is None:
         fails.append("leg b precondition: rc=%d %s" % (rc, tail(log)))
     else:
-        with open(c, "a", encoding="utf-8") as fh:
+        with open(c, "a", encoding="utf-8", newline="") as fh:
             fh.write("A later edit.\n")
         edited = read(c)
         rc, out, err = run(ROTATE, [c, "--undo", dirs[0], "--apply"], cwd=d)

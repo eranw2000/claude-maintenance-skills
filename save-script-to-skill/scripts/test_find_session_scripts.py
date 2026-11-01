@@ -4,6 +4,12 @@
 Run: /usr/bin/python3 test_find_session_scripts.py
 """
 import contextlib
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+if __name__ == "__main__":
+    for _stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
 import importlib.util
 import io
 import json
@@ -68,7 +74,7 @@ class Base(unittest.TestCase):
 
     def transcript(self, recs, name="t.jsonl", raw_lines=()):
         p = self.tmp / name
-        with open(p, "w", encoding="utf-8") as fh:
+        with open(p, "w", encoding="utf-8", newline="") as fh:
             for line in raw_lines:
                 fh.write(line + "\n")
             for r in recs:
@@ -77,7 +83,7 @@ class Base(unittest.TestCase):
 
     def script_file(self, name, text="#!/usr/bin/env python3\nprint('hi')\n"):
         p = self.tmp / name
-        p.write_text(text, encoding="utf-8")
+        p.write_bytes((text).encode("utf-8"))
         return str(p)
 
     def run_main(self, *argv):
@@ -253,7 +259,7 @@ class PathTests(Base):
         home, cwd = self.tmp / "home", self.tmp / "proj"
         for base in (home / ".claude", cwd / ".claude"):
             (base / "skills" / "s").mkdir(parents=True)
-            (base / "skills" / "s" / "SKILL.md").write_text("x")
+            (base / "skills" / "s" / "SKILL.md").write_bytes(("x").encode("utf-8"))
         with mock.patch.dict(os.environ, {"HOME": str(home)}):
             d, why = fss.resolve_skill_dir("s", str(cwd))
         self.assertEqual((d, why), (cwd / ".claude" / "skills" / "s", None))
@@ -261,8 +267,8 @@ class PathTests(Base):
     def test_home_skill_found_when_project_has_none(self):
         home = self.tmp / "home"
         (home / ".claude" / "skills" / "s").mkdir(parents=True)
-        (home / ".claude" / "skills" / "s" / "SKILL.md").write_text("x")
-        with mock.patch.dict(os.environ, {"HOME": str(home)}):
+        (home / ".claude" / "skills" / "s" / "SKILL.md").write_bytes(("x").encode("utf-8"))
+        with mock.patch.dict(os.environ, {"HOME": str(home), "USERPROFILE": str(home)}):
             d, _ = fss.resolve_skill_dir("s", str(self.tmp / "nowhere"))
         self.assertEqual(d, home / ".claude" / "skills" / "s")
 
@@ -280,13 +286,13 @@ class PathTests(Base):
         d = home / ".claude" / "projects" / "-home-me--claude-projects-my-proj"
         d.mkdir(parents=True)
         old, new = d / "old.jsonl", d / "new.jsonl"
-        old.write_text("")
-        new.write_text("")
+        old.write_bytes(("").encode("utf-8"))
+        new.write_bytes(("").encode("utf-8"))
         now = time.time()
         os.utime(old, (now - 100, now - 100))
         os.utime(new, (now, now))
-        (d / "newer.txt").write_text("")                    # not a transcript
-        with mock.patch.dict(os.environ, {"HOME": str(home)}):
+        (d / "newer.txt").write_bytes(("").encode("utf-8"))                    # not a transcript
+        with mock.patch.dict(os.environ, {"HOME": str(home), "USERPROFILE": str(home)}):
             self.assertEqual(fss.default_transcript(cwd), new)
 
     def test_default_transcript_none_when_no_folder(self):

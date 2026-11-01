@@ -21,6 +21,12 @@ Exit codes:
 The text rules live in splitlib.py; this file only reads, calls and prints.
 """
 import argparse
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+if __name__ == "__main__":
+    for _stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
 import os
 import sys
 
@@ -171,7 +177,7 @@ def main(argv=None):
                 rep += (["- %s: %s" % (splitlib.section_name(k), w) for k, w in diffs]
                         or ["unchanged outside the sections named by --edited"])
             try:
-                with open(args.report, "w", encoding="utf-8") as fh:
+                with open(args.report, "w", encoding="utf-8", newline="") as fh:
                     fh.write("\n".join(rep) + "\n")
             except OSError as e:
                 print("CANNOT TELL: report not written: %s (%s); nothing was changed"

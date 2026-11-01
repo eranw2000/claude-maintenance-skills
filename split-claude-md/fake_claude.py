@@ -26,6 +26,12 @@ Environment knobs:
   (FAKE_CLAUDE_FAIL kind "badutf8" writes a byte that is not UTF-8 to stdout)
 """
 import json
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+if __name__ == "__main__":
+    for _stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
 import os
 import re
 import sys
@@ -59,9 +65,9 @@ def main():
     n = 1
     if log:
         if os.path.exists(log):
-            with open(log) as fh:
+            with open(log, encoding="utf-8") as fh:
                 n = sum(1 for _ in fh) + 1
-        with open(log, "a") as fh:
+        with open(log, "a", encoding="utf-8", newline="") as fh:
             fh.write(json.dumps({"argv": argv, "cwd": os.getcwd(), "mode": mode,
                                  "stdin": prompt, "files": sorted(os.listdir("."))}) + "\n")
 
@@ -71,7 +77,7 @@ def main():
         d = os.path.join(os.path.expanduser("~"), ".claude", "projects", enc, "memory")
         os.makedirs(d, exist_ok=True)
         if mem == "file":
-            with open(os.path.join(d, "note.md"), "w") as fh:
+            with open(os.path.join(d, "note.md"), "w", encoding="utf-8", newline="") as fh:
                 fh.write("left by the fake\n")
 
     fail = os.environ.get("FAKE_CLAUDE_FAIL", "")

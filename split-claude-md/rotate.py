@@ -50,6 +50,12 @@ restores each backup, deletes each file the run created and renames the run
 folder <name>.undone; it never touches a file the manifest does not name.
 """
 import argparse
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+if __name__ == "__main__":
+    for _stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
 import fnmatch
 import hashlib
 import json
@@ -707,7 +713,7 @@ def last_run_outside(fin, convention):
 
 def write_report(run_dir, name, text):
     """REPORT.dry.md (step 3) or REPORT.md (step 6)."""
-    with open(os.path.join(run_dir, name), "w", encoding="utf-8") as fh:
+    with open(os.path.join(run_dir, name), "w", encoding="utf-8", newline="") as fh:
         fh.write(text)
 
 
@@ -724,7 +730,7 @@ def write_manifest(run_dir, manifest):
     the temp file is removed and the error raised."""
     tmp = os.path.join(run_dir, "manifest.json.tmp")
     try:
-        with open(tmp, "w", encoding="utf-8") as fh:
+        with open(tmp, "w", encoding="utf-8", newline="") as fh:
             json.dump(manifest, fh, indent=2)
             fh.flush()
             os.fsync(fh.fileno())
@@ -1392,12 +1398,12 @@ def after_manifest(st):
 
     try:
         for name, text in arch_final.items():
-            with open(os.path.join(d, name), "w", encoding="utf-8") as fh:
+            with open(os.path.join(d, name), "w", encoding="utf-8", newline="") as fh:
                 fh.write(text)
             print(f"  archive {'appended' if arch_exists[name] else 'created '} {name}")
-        with open(path, "w", encoding="utf-8") as fh:
+        with open(path, "w", encoding="utf-8", newline="") as fh:
             fh.write(final_text)
-        with open(index_path, "w", encoding="utf-8") as fh:
+        with open(index_path, "w", encoding="utf-8", newline="") as fh:
             fh.write(idx_final)
         print(f"  index   {'appended' if index_old is not None else 'created '} {len(rows)} rows "
               f"and a Runs row in {INDEX_NAME}")

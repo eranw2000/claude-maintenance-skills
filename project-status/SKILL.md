@@ -101,7 +101,7 @@ Read the project's `MEMORY.md` index. Surface any entries whose hooks contain "P
 
 ### 2h. CLAUDE.md freshness
 ```bash
-stat -f %Sm -t '%Y-%m-%d' CLAUDE.md  # macOS
+python3 -c "import os,time; print(time.strftime('%Y-%m-%d', time.localtime(os.path.getmtime('CLAUDE.md'))))"
 ```
 Compute age in days. Flag if > 30 days since last update (likely a project that has been worked on without doc updates).
 

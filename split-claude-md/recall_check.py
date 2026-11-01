@@ -39,6 +39,12 @@ The prompt goes on stdin: `--tools <tools...>` takes a list and swallows a trail
 argument.
 """
 import argparse
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+if __name__ == "__main__":
+    for _stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
 import hashlib
 import json
 import os
@@ -208,7 +214,7 @@ def build_copy(copies, folder, claude_src, overrides=None, drop=(), empty_claude
         if not os.path.exists(dst):
             shutil.copyfile(src, dst)
     if empty_claude:
-        open(os.path.join(d, "CLAUDE.md"), "w").close()
+        open(os.path.join(d, "CLAUDE.md"), "w", encoding="utf-8", newline="").close()
     else:
         shutil.copyfile(claude_src, os.path.join(d, "CLAUDE.md"))
     return d
@@ -286,7 +292,7 @@ def main(argv=None):
     def finish(code):
         say("VERDICT exit %d" % code)
         if a.report:
-            with open(a.report, "w", encoding="utf-8") as fh:
+            with open(a.report, "w", encoding="utf-8", newline="") as fh:
                 fh.write("\n".join(lines) + "\n")
         return code
 

@@ -10,6 +10,12 @@ Run:  python3 test_run_tests.py
 """
 
 import os
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+if __name__ == "__main__":
+    for _stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
 import shutil
 import subprocess
 import sys
@@ -31,13 +37,13 @@ def check(name, cond, detail=""):
 def run_with(goal_src):
     d = tempfile.mkdtemp(prefix="run_tests_test_")
     shutil.copy(RUNNER, d)
-    with open(os.path.join(d, "test_ok.py"), "w") as fh:
+    with open(os.path.join(d, "test_ok.py"), "w", encoding="utf-8", newline="") as fh:
         fh.write(OK_TEST)
     if goal_src is not None:
-        with open(os.path.join(d, "goal_check.py"), "w") as fh:
+        with open(os.path.join(d, "goal_check.py"), "w", encoding="utf-8", newline="") as fh:
             fh.write(goal_src)
     p = subprocess.run([sys.executable, os.path.join(d, "run_tests.py")],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
     shutil.rmtree(d)
     return p.returncode, p.stdout + p.stderr
 

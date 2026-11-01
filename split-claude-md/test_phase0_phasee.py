@@ -12,6 +12,12 @@ Run:  python3 test_phase0_phasee.py
 """
 
 import os
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+if __name__ == "__main__":
+    for _stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
 import subprocess
 import sys
 import tempfile
@@ -184,7 +190,7 @@ def run_survey(text):
     os.close(fd)
     try:
         p = subprocess.run([sys.executable, SURVEY, path],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
         return p.stdout
     finally:
         os.unlink(path)

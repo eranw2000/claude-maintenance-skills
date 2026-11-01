@@ -28,6 +28,12 @@ only its DISK SITES, FAIL site, UNREACHED and summary lines.
 """
 
 import ast
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+if __name__ == "__main__":
+    for _stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
 import builtins
 import io
 import os
@@ -751,7 +757,7 @@ def plant_copy(tmp):
     plant = [ind + "try:", ind + "    os.listdir(os.curdir)  # PLANTED", ind + "except OSError:",
              ind + "    return 1", ind + "if False:", ind + "    os.listdir(os.curdir)  # UNREACHED"]
     lines[i:i] = plant
-    with open(p, "w", encoding="utf-8") as fh:
+    with open(p, "w", encoding="utf-8", newline="") as fh:
         fh.write("\n".join(lines))
     return dst, i + 2, i + 6
 
@@ -766,7 +772,7 @@ def interpreter_312():
         if not p:
             continue
         r = subprocess.run([p, "-c", "import sys; print(sys.version_info >= (3, 12)); print(sys.version.split()[0])"],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
         out = r.stdout.split()
         if r.returncode == 0 and out[:1] == ["True"]:
             return p, out[1]
@@ -1025,7 +1031,7 @@ def named_tests(check, tmp):
         with open(mp, encoding="utf-8") as fh:
             man = json.load(fh)
         man["files"][0]["path"] = "CLAUDE\u0000.md"
-        with open(mp, "w", encoding="utf-8") as fh:
+        with open(mp, "w", encoding="utf-8", newline="") as fh:
             json.dump(man, fh)
         return d, p, snapshot([d])
     d, p, snap = nul_manifest()
@@ -1039,7 +1045,7 @@ def named_tests(check, tmp):
         print("  3.12+ interpreter: %s (%s)" % (py, ver))
         d, p, snap = nul_manifest()
         r = subprocess.run([py, "-I", os.path.join(CODE_DIR, "rotate.py"), p, "--undo", tru.U_RUN, "--apply"],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
         check("3.12+ (%s %s) a manifest path holding NUL: --undo <dir> --apply exits 2, no "
               "Traceback, files unchanged" % (os.path.basename(py), ver),
               r.returncode == 2 and "Traceback" not in r.stderr and snapshot([d]) == snap,
@@ -1084,9 +1090,9 @@ def named_tests(check, tmp):
         try:
             denied = locked_idx and not os.access(idx, os.R_OK)
             r = subprocess.run([sys.executable, os.path.join(CODE_DIR, "loss_check.py"), "--before", b,
-                                "--after", a, "--lazy", lz], capture_output=True, text=True)
+                                "--after", a, "--lazy", lz], capture_output=True, text=True, encoding="utf-8", errors="replace")
             rp = subprocess.run([sys.executable, os.path.join(CODE_DIR, "pointers.py"), a, "--root", mk(tmp)],
-                                capture_output=True, text=True)
+                                capture_output=True, text=True, encoding="utf-8", errors="replace")
         finally:
             os.chmod(idx, 0o644)
         if not locked_idx:
@@ -1132,7 +1138,7 @@ def named_tests(check, tmp):
         gone = mk(tmp)
         r = subprocess.run(["sh", "-c", 'cd "$1" && rmdir "$1" && shift && exec "$@"', "sh", gone,
                             sys.executable, "-I", os.path.join(CODE_DIR, "rotate.py"), "CLAUDE.md"] + args,
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
         tells = [l for l in r.stdout.splitlines() if l.startswith("CANNOT TELL: ")]
         if label.startswith("K2"):
             check("K2 rotate.py CLAUDE.md --undo 2026-02-15 from a deleted working folder: exit 2, a 'CANNOT TELL: ' "
@@ -1166,7 +1172,7 @@ def refusal_controls(check, tmp):
     rc, out = call_rotate([p] + tru.U_ARGS + ["--root", root, "--apply"])
     check("refusal control, rules draft: a moving rule sentence, --apply exits 3", rc == 3, "rc=%r" % rc)
     d, root, p, rc0 = applied(tmp, tru.U_CLAUDE)
-    with open(p, "a", encoding="utf-8") as fh:
+    with open(p, "a", encoding="utf-8", newline="") as fh:
         fh.write("An edit made after the run.\n")
     rc, out = call_rotate([p, "--undo", "2026-02-15", "--apply"])
     check("refusal control, undo: an undo after CLAUDE.md changed exits 3", rc0 == 0 and rc == 3,
@@ -1319,7 +1325,7 @@ def main():
             base_n = len(en["sites"])
             r = subprocess.run([sys.executable, "-I", os.path.abspath(__file__), "--target", dst,
                                 "--site", "rotate.py:%d" % planted_line], capture_output=True, text=True,
-                               cwd=dst)
+                               cwd=dst, encoding="utf-8", errors="replace")
             out = "\n".join(l for l in r.stdout.splitlines() if not TALLY.search(l))
             ds = re.search(r"^DISK SITES (\d+) ", out, re.M)
             check("C1 the planted call inside before_manifest is enumerated (the count rises by 2 with C2's "

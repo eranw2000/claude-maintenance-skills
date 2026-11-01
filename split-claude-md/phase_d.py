@@ -49,6 +49,12 @@ over a same-day backup) unless --no-backup says the session already did.
 """
 
 import argparse
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+if __name__ == "__main__":
+    for _stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
 import datetime
 import json
 import os
@@ -400,7 +406,7 @@ def write_all(writes, cm, today, no_backup):
                 print("backup  " + b)
     for p in order:
         tmp = p + ".phase_d.tmp"
-        with open(tmp, "w", encoding="utf-8") as fh:
+        with open(tmp, "w", encoding="utf-8", newline="") as fh:
             fh.write(writes[p])
         os.replace(tmp, p)
         print("wrote   " + p)

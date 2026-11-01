@@ -10,6 +10,12 @@ Run:  python3 test_phase_d.py
 """
 
 import json
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+if __name__ == "__main__":
+    for _stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
 import os
 import shutil
 import subprocess
@@ -67,17 +73,17 @@ def setup(claude=CLAUDE, archive=ARCHIVE, index=INDEX):
              "CLAUDE_DECISIONS_INDEX.md": index}
     for name, text in files.items():
         if text is not None:
-            with open(os.path.join(d, name), "w", encoding="utf-8") as fh:
+            with open(os.path.join(d, name), "w", encoding="utf-8", newline="") as fh:
                 fh.write(text)
     return d
 
 
 def run(d, spec, *extra):
     sp = os.path.join(d, "spec.json")
-    with open(sp, "w", encoding="utf-8") as fh:
+    with open(sp, "w", encoding="utf-8", newline="") as fh:
         fh.write(spec if isinstance(spec, str) else json.dumps(spec))
     p = subprocess.run([sys.executable, TOOL, os.path.join(d, "CLAUDE.md"), "--spec", sp,
-                        "--today", "2026-10-13"] + list(extra), capture_output=True, text=True)
+                        "--today", "2026-10-13"] + list(extra), capture_output=True, text=True, encoding="utf-8", errors="replace")
     return p.returncode, p.stdout + p.stderr
 
 
@@ -341,7 +347,7 @@ def t18_pointer_check_refuses_a_cut_that_breaks_a_pointer():
                             "- Detail in `notes.md`.\n- **Keep the bucket name")
     d = setup(claude=claude)
     os.mkdir(os.path.join(d, "runs"))
-    with open(os.path.join(d, "runs", "notes.md"), "w", encoding="utf-8") as fh:
+    with open(os.path.join(d, "runs", "notes.md"), "w", encoding="utf-8", newline="") as fh:
         fh.write("x\n")
     c = cut("- **Keep runs short.**", [" The logs went to `runs/`."])
     rc, out = run(d, {"cuts": [c]}, "--write", "--root", d)
@@ -368,7 +374,7 @@ def t19_old_unresolved_pointer_is_counted_not_refused():
 
 def t20_symlinked_archive_refused():
     d = setup(archive=None)
-    with open(os.path.join(d, "history.md"), "w", encoding="utf-8") as fh:
+    with open(os.path.join(d, "history.md"), "w", encoding="utf-8", newline="") as fh:
         fh.write(ARCHIVE)
     os.symlink("history.md", os.path.join(d, "CLAUDE_DECISIONS_2026-09.md"))
     rc, out = run(d, {"cuts": [C_BULLET]}, "--write")
@@ -392,7 +398,7 @@ def t21_missing_root_cannot_tell():
 def t22_check_read_errors_cannot_tell():
     d = setup()
     notes = os.path.join(d, "NOTES.md")
-    with open(notes, "w", encoding="utf-8") as fh:
+    with open(notes, "w", encoding="utf-8", newline="") as fh:
         fh.write("notes\n")
     os.chmod(notes, 0)
     rc, out = run(d, {"cuts": [C_BULLET]}, "--write")
