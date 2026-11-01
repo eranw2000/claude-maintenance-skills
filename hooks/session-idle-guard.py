@@ -52,6 +52,12 @@ Escape hatches: CLAUDE_IDLE_GUARD_OFF=1 in the environment disables it entirely
 automation), CLAUDE_IDLE_GUARD_NO_SAVE=1 disables ONLY the forced save and
 keeps the idle bands, and the marker below lets a single prompt through.
 """
+import glob
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+for _stream in (sys.stdin, sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 import json
 import os
 import sys
@@ -139,7 +145,7 @@ def state_path(session_id: str) -> str:
 
 def read_state(path: str) -> dict:
     try:
-        with open(path) as fh:
+        with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
         return data if isinstance(data, dict) else {}
     except Exception:
@@ -150,7 +156,7 @@ def write_state(path: str, state: dict) -> None:
     try:
         os.makedirs(STATE_DIR, exist_ok=True)
         tmp = path + ".tmp"
-        with open(tmp, "w") as fh:
+        with open(tmp, "w", encoding="utf-8", newline="") as fh:
             json.dump(state, fh)
         os.replace(tmp, path)
     except Exception:
@@ -229,6 +235,52 @@ def saw_save_skill(state: dict, transcript_path) -> bool:
                     and (item.get("input") or {}).get("skill") in SAVE_SKILLS):
                 return True
     return False
+
+
+def mark_saved(state: dict, now: float, tokens) -> None:
+    """Stamp a save that happened: the clock and, when it was readable, the size
+    the growth rule restarts from. The one writer for both ways a save is seen."""
+    state["last_save"] = now
+    if isinstance(tokens, int):
+        state["tokens_at_last_save"] = tokens
+        state["forced_at_size"] = tokens >= FORCED_SAVE_TOKENS
+
+
+def find_transcript(session_id: str):
+    """This session's own transcript, by its id; None when there is not exactly one."""
+    safe = "".join(c for c in str(session_id) if c.isalnum() or c in "-_")
+    hits = glob.glob(os.path.join(HOME, ".claude", "projects", "*", safe + ".jsonl"))
+    return hits[0] if len(hits) == 1 else None
+
+
+def record_save_cli(args: list, now: float) -> int:
+    """`--record-save [--session ID] [--transcript PATH]`: stamp a save the hook
+    could not see.
+
+    A save followed from save-context's SKILL.md (keep-alive does that on purpose,
+    to keep the cache on one model) never makes a Skill call, so `saw_save_skill`
+    misses it and the next Stop forces a second save (ta6403). The save's last step
+    runs this. Refuses (exit 2) without a session id rather than stamp a guess."""
+    opts = {}
+    it = iter(args)
+    for flag in it:
+        if flag in ("--session", "--transcript"):
+            opts[flag] = next(it, "")
+    session_id = opts.get("--session") or os.environ.get("CLAUDE_CODE_SESSION_ID", "")
+    if not session_id:
+        print("session-idle-guard: --record-save needs --session or "
+              "CLAUDE_CODE_SESSION_ID; nothing recorded", file=sys.stderr)
+        return 2
+    transcript = opts.get("--transcript") or find_transcript(session_id)
+    tokens = session_tokens(transcript)
+    path = state_path(session_id)
+    state = read_state(path)
+    mark_saved(state, now, tokens)
+    write_state(path, state)
+    print("recorded a save for %s at %s UTC (tokens %s)"
+          % (session_id, time.strftime("%H:%M:%S", time.gmtime(now)),
+             tokens if isinstance(tokens, int) else "unread"))
+    return 0
 
 
 def is_harness_prompt(prompt: str) -> bool:
@@ -382,10 +434,7 @@ def handle_stop(payload: dict, now: float) -> int:
 
     # Before every early return below, so the scan offset always advances.
     if saw_save_skill(state, payload.get("transcript_path")):
-        state["last_save"] = now
-        if isinstance(tokens, int):
-            state["tokens_at_last_save"] = tokens
-            state["forced_at_size"] = tokens >= FORCED_SAVE_TOKENS
+        mark_saved(state, now, tokens)
 
     last_save = state.get("last_save")
     if not isinstance(last_save, (int, float)):
@@ -544,6 +593,8 @@ def handle_prompt(payload: dict, now: float) -> int:
 
 
 def main() -> int:
+    if sys.argv[1:2] == ["--record-save"]:
+        return record_save_cli(sys.argv[2:], time.time())
     if os.environ.get("CLAUDE_IDLE_GUARD_OFF") == "1":
         return 0
     try:

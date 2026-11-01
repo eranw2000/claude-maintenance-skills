@@ -17,6 +17,11 @@ no f-string or PEP 604 syntax, so it runs on any python3 the machine offers.
 """
 
 import argparse
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+for _stream in (sys.stdin, sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 import datetime
 import os
 import re

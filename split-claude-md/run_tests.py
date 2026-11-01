@@ -10,6 +10,11 @@ Run:  python3 run_tests.py
 """
 
 import glob
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+for _stream in (sys.stdin, sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 import os
 import re
 import subprocess
@@ -30,7 +35,7 @@ def main():
     broken = []
     for f in files:
         p = subprocess.run([sys.executable, f], capture_output=True, text=True,
-                           cwd=HERE)
+                           cwd=HERE, encoding="utf-8", errors="replace")
         m = TALLY.search(p.stdout)
         name = os.path.basename(f)
         if not m:
@@ -52,7 +57,7 @@ def main():
     n_files = len(files)
     if os.path.isfile(GOAL):
         n_files += 1
-        p = subprocess.run([sys.executable, GOAL], capture_output=True, text=True, cwd=HERE)
+        p = subprocess.run([sys.executable, GOAL], capture_output=True, text=True, cwd=HERE, encoding="utf-8", errors="replace")
         verdict = [l for l in p.stdout.splitlines() if l.startswith(("GOAL HOLDS", "GOAL NOT MET"))]
         if not verdict:
             broken.append("goal_check.py")

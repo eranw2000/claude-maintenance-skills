@@ -21,6 +21,11 @@ Exit codes:
   2  cannot tell: FILE, a --root or the --memory-dir is missing or unreadable
 """
 import argparse
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+for _stream in (sys.stdin, sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 import os
 import sys
 

@@ -20,6 +20,11 @@ Run:  python3 test_rotate_undo.py
 """
 
 import hashlib
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+for _stream in (sys.stdin, sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 import io
 import json
 import os
@@ -527,7 +532,7 @@ def main():
 
     def bad_copy2(src, dst, *a, **k):
         r = real_copy2(src, dst, *a, **k)
-        with open(dst, "a", encoding="utf-8") as fh:
+        with open(dst, "a", encoding="utf-8", newline="") as fh:
             fh.write("torn\n")
         return r
     rc, out = inproc([p, "--undo", U_RUN, "--apply"], [(rotate.shutil, "copy2", bad_copy2)])
@@ -631,7 +636,7 @@ def main():
 
     def torn_copy2(src, dst, *a, **k):
         r = real_copy2(src, dst, *a, **k)
-        with open(dst, "a", encoding="utf-8") as fh:
+        with open(dst, "a", encoding="utf-8", newline="") as fh:
             fh.write("torn\n")
         return r
     rc, out = inproc([p, "--undo", U_RUN, "--apply"], [(rotate.shutil, "copy2", torn_copy2)])

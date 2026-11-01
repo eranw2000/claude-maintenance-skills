@@ -17,6 +17,11 @@ Run:  python3 test_rotate_rules.py
 """
 
 import os
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+for _stream in (sys.stdin, sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 import re
 import shutil
 import subprocess
@@ -102,7 +107,7 @@ def readb(path):
 
 def write(path, text):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fh:
+    with open(path, "w", encoding="utf-8", newline="") as fh:
         fh.write(text)
     return path
 

@@ -30,6 +30,11 @@ measured against the Sheets API.
 Exit 0 ok; 2 bad input (the message names the row); 1 when Google refuses a request.
 """
 import argparse
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+for _stream in (sys.stdin, sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 import json
 import re
 import os
@@ -65,7 +70,7 @@ SEARCHED = "Searched:"
 def load(path):
     """Read and validate rows.json; a bad file exits 2 naming the first wrong thing."""
     try:
-        data = json.loads(Path(path).read_text())
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         sys.exit(f"cannot read {path}: {type(exc).__name__}")
     if not isinstance(data, dict):
@@ -269,7 +274,7 @@ def sheets_service():
 
 def open_or_create(svc, data, id_file):
     if id_file.is_file():
-        sid = id_file.read_text().strip()
+        sid = id_file.read_text(encoding="utf-8").strip()
         meta = svc.spreadsheets().get(spreadsheetId=sid).execute()
         print(f"rewriting the existing Sheet {sid}")
     else:
@@ -278,7 +283,7 @@ def open_or_create(svc, data, id_file):
             "sheets": [{"properties": {"title": GRID_TAB, "index": 0}},
                        {"properties": {"title": SUMMARY_TAB, "index": 1}}]}).execute()
         sid = meta["spreadsheetId"]
-        id_file.write_text(sid + "\n")
+        id_file.write_bytes((sid + "\n").encode("utf-8"))
         print(f"created the Sheet {sid} and recorded its id in {id_file}")
     tabs = {s["properties"]["title"]: s["properties"]["sheetId"] for s in meta["sheets"]}
     cf = {s["properties"]["title"]: len(s.get("conditionalFormats", [])) for s in meta["sheets"]}
@@ -350,8 +355,8 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     id_file, md_file = out / "sheet_id.txt", out / "COMPARISON.md"
     if args.md_only:
-        sid = id_file.read_text().strip() if id_file.is_file() else ""
-        md_file.write_text(render_md(data, sid))
+        sid = id_file.read_text(encoding="utf-8").strip() if id_file.is_file() else ""
+        md_file.write_bytes((render_md(data, sid)).encode("utf-8"))
         print(f"wrote {md_file}")
         return 0
     svc = sheets_service()
@@ -362,7 +367,7 @@ def main(argv=None):
                     cf[SUMMARY_TAB])
     svc.spreadsheets().batchUpdate(spreadsheetId=sid, body={"requests": reqs}).execute()
     rows, rules = read_back(svc, sid, data)
-    md_file.write_text(render_md(data, sid))
+    md_file.write_bytes((render_md(data, sid)).encode("utf-8"))
     c = counts(data)
     print(f"read back {rows} rows, dropdown on Action, {rules} colour rules")
     print("counts: " + ", ".join(f"{a} {c[a]}" for a in ACTIONS))

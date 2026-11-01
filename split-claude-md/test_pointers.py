@@ -10,6 +10,11 @@ Run:  python3 test_pointers.py
 """
 
 import os
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+for _stream in (sys.stdin, sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 import shutil
 import subprocess
 import sys
@@ -76,7 +81,7 @@ def run(script, *args, env=None, cwd=None):
 
 def write(path, text):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fh:
+    with open(path, "w", encoding="utf-8", newline="") as fh:
         fh.write(text)
     return path
 

@@ -10,6 +10,11 @@ Run:  python3 test_recall_check.py
 """
 
 import hashlib
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+for _stream in (sys.stdin, sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 import json
 import os
 import re
@@ -59,22 +64,22 @@ def main():
     def project(before, after, archive=None, extra=None):
         d = os.path.realpath(tempfile.mkdtemp(prefix="recall_t_"))
         tmpdirs.append(d)
-        with open(os.path.join(d, "CLAUDE.md"), "w") as fh:
+        with open(os.path.join(d, "CLAUDE.md"), "w", encoding="utf-8", newline="") as fh:
             fh.write(after)
-        with open(os.path.join(d, BACKUP), "w") as fh:
+        with open(os.path.join(d, BACKUP), "w", encoding="utf-8", newline="") as fh:
             fh.write(before)
         if archive is not None:
-            with open(os.path.join(d, "CLAUDE_DECISIONS_2026-01.md"), "w") as fh:
+            with open(os.path.join(d, "CLAUDE_DECISIONS_2026-01.md"), "w", encoding="utf-8", newline="") as fh:
                 fh.write(archive)
         for name, text in (extra or {}).items():
-            with open(os.path.join(d, name), "w") as fh:
+            with open(os.path.join(d, name), "w", encoding="utf-8", newline="") as fh:
                 fh.write(text)
         os.makedirs(os.path.join(d, "split_2026-01-01"))
         return d
 
     def run(d, pack_text, args=None, env_extra=None, before=True):
         p = os.path.join(d, "split_2026-01-01", "QUESTIONS.md")
-        with open(p, "w") as fh:
+        with open(p, "w", encoding="utf-8", newline="") as fh:
             fh.write(pack_text)
         home = os.path.realpath(tempfile.mkdtemp(prefix="recall_home_"))
         tmpdirs.append(home)
@@ -87,10 +92,10 @@ def main():
         if before:
             argv += ["--before", os.path.join(d, BACKUP)]
         argv += args or []
-        r = subprocess.run(argv, capture_output=True, text=True, env=env, timeout=120)
+        r = subprocess.run(argv, capture_output=True, text=True, env=env, timeout=120, encoding="utf-8", errors="replace")
         calls = []
         if os.path.exists(log):
-            with open(log) as fh:
+            with open(log, encoding="utf-8") as fh:
                 calls = [json.loads(l) for l in fh]
         return Run(r.returncode, r.stdout, r.stderr, calls, home, d, tmp)
 
@@ -98,12 +103,12 @@ def main():
     d = project(notes(RULE_TEXT), notes(RULE_TEXT))
     r = subprocess.run([FAKE, "-p", "--setting-sources", "project", "--no-session-persistence",
                         "--strict-mcp-config", "--output-format", "json", "--tools", ""],
-                       input="Q?", capture_output=True, text=True, cwd=d)
+                       input="Q?", capture_output=True, text=True, cwd=d, encoding="utf-8", errors="replace")
     check("0 CONTROL: the fake answers from CLAUDE.md in rule mode",
           r.returncode == 0 and "NODEPLOYFRI-7Q" in json.loads(r.stdout)["result"], r.stdout + r.stderr)
     r = subprocess.run([FAKE, "-p", "--setting-sources", "project", "--no-session-persistence",
                         "--strict-mcp-config", "--output-format", "json", "--tools", "", "Q?"],
-                       input="", capture_output=True, text=True, cwd=d)
+                       input="", capture_output=True, text=True, cwd=d, encoding="utf-8", errors="replace")
     check("0 CONTROL: the fake refuses a prompt given as a trailing argument",
           r.returncode == 2 and "FAKE ARGV BROKEN" in r.stderr, r.stderr)
 
@@ -239,7 +244,7 @@ def main():
     check("11 twin: all 3 copies' session folders hold a file, so all 3 are LEFT, reported, and "
           "every file is intact",
           len(copies_used) == 3 and sorted(left) == expected and r.out.count("LEFT:") == 3
-          and all(os.path.isfile(f) and open(f).read() == "left by the fake\n" for f in notes_left),
+          and all(os.path.isfile(f) and open(f, encoding="utf-8").read() == "left by the fake\n" for f in notes_left),
           repr(left) + repr(expected) + r.out)
 
     # ------------------------------------------------------------ 12 --manifest mode
@@ -251,7 +256,7 @@ def main():
         bk = os.path.join(d, BACKUP)
         pre = hashlib.sha256(open(bk, "rb").read()).hexdigest()
         if tamper == "changed":
-            with open(bk, "a") as fh:
+            with open(bk, "a", encoding="utf-8", newline="") as fh:
                 fh.write("changed\n")
         if tamper == "missing":
             os.remove(bk)
@@ -269,7 +274,7 @@ def main():
             man["files"][0] = entry(man["files"][0])
         if entry2 is not None:
             man["files"][1] = entry2(man["files"][1])
-        with open(os.path.join(run_dir, "manifest.json"), "w") as fh:
+        with open(os.path.join(run_dir, "manifest.json"), "w", encoding="utf-8", newline="") as fh:
             json.dump(man, fh)
         return d, os.path.join(run_dir, "manifest.json")
 
@@ -310,7 +315,7 @@ def main():
     check("13 --before names a missing file: exit 2, zero calls", r.rc == 2 and not r.calls and "REFUSED" in r.out, r.out + r.err)
     o = os.path.realpath(tempfile.mkdtemp(prefix="recall_out_"))
     tmpdirs.append(o)
-    with open(os.path.join(o, "private.md"), "w") as fh:
+    with open(os.path.join(o, "private.md"), "w", encoding="utf-8", newline="") as fh:
         fh.write(notes(RULE_TEXT))
     r = run(d, pack(RULE_LINE, filler=5), ["--before", os.path.join(o, "private.md")], before=False)
     check("13 --before outside the project folder: exit 2, zero calls",
@@ -331,7 +336,7 @@ def main():
     rep = os.path.join(d, "split_2026-01-01", "RECALL.md")
     r = run(d, pack(RULE_LINE, filler=5), ["--report", rep])
     check("15 --report writes the same verdict to a file",
-          os.path.exists(rep) and "VERDICT exit 0" in open(rep).read(), r.out + r.err)
+          os.path.exists(rep) and "VERDICT exit 0" in open(rep, encoding="utf-8").read(), r.out + r.err)
 
     # ------------------------------------------------------------ 16 edge cases
     import importlib

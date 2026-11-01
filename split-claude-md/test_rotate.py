@@ -14,6 +14,11 @@ Run:  python3 test_rotate.py
 """
 
 import os
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+for _stream in (sys.stdin, sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 import re
 import shutil
 import subprocess
@@ -125,7 +130,7 @@ def fresh(body, name="CLAUDE.md"):
     """A throwaway directory holding one fixture file. Never a real project."""
     d = tempfile.mkdtemp(prefix="rotate-test-")
     p = os.path.join(d, name)
-    with open(p, "w", encoding="utf-8") as fh:
+    with open(p, "w", encoding="utf-8", newline="") as fh:
         fh.write(body)
     return d, p
 
@@ -282,14 +287,14 @@ def main():
     bd = tempfile.mkdtemp(prefix="rotate-test-backup-")
     tmpdirs.append(bd)
     bp = os.path.join(bd, "thing.md")
-    with open(bp, "w", encoding="utf-8") as fh:
+    with open(bp, "w", encoding="utf-8", newline="") as fh:
         fh.write("payload one")
 
     b1 = rotate.backup(bp, "2026-08-15")
     check("backup creates a dated copy with the original bytes",
           b1 is not None and read(b1) == "payload one", "b1=%r" % b1)
 
-    with open(bp, "w", encoding="utf-8") as fh:
+    with open(bp, "w", encoding="utf-8", newline="") as fh:
         fh.write("payload two")
     b2 = rotate.backup(bp, "2026-08-15")
     check("a SECOND backup on the same day does not overwrite the first",

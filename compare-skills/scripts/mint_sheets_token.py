@@ -17,6 +17,11 @@ google-auth-oauthlib. Prints metadata only, never a token value.
 Exit 0 ok; 2 on a missing client file or an existing token without --force.
 """
 import argparse
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+for _stream in (sys.stdin, sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 import json
 import os
 import sys
@@ -45,10 +50,10 @@ def main(argv=None):
     creds = InstalledAppFlow.from_client_secrets_file(client, SCOPES).run_local_server(port=0)
     os.makedirs(os.path.dirname(token_path), exist_ok=True)
     fd = os.open(token_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)  # never readable by others
-    with os.fdopen(fd, "w") as handle:
+    with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
         handle.write(creds.to_json())
     os.chmod(token_path, 0o600)  # also tightens a file that already existed (--force)
-    written = json.load(open(token_path))
+    written = json.load(open(token_path, encoding="utf-8"))
     print(f"wrote {token_path}")
     print(f"granted scopes: {written.get('scopes')}")
     print(f"refresh token present: {bool(written.get('refresh_token'))}")

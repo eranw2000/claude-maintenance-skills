@@ -9,6 +9,11 @@ Run:  python3 test_loss_check.py
 """
 
 import os
+import sys
+# Read and write UTF-8 on every OS: the Windows default code page misreads it.
+for _stream in (sys.stdin, sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 import shutil
 import subprocess
 import sys
@@ -69,7 +74,7 @@ def run(*args, env=None, cwd=None):
 
 def write(path, text):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fh:
+    with open(path, "w", encoding="utf-8", newline="") as fh:
         fh.write(text)
     return path
 
@@ -728,7 +733,7 @@ python3 tool.py --flag
           rc == 0 and prefixed(out, "HOLDS: nothing lost without a waiver") and not prefixed(out, "CANNOT TELL: "),
           "rc=%d %r" % (rc, out[-400:]))
     rp = subprocess.run([sys.executable, os.path.join(HERE, "pointers.py"), a, "--root", folder()],
-                        capture_output=True, text=True)
+                        capture_output=True, text=True, encoding="utf-8", errors="replace")
     check("H3 pointers.py on the same after file with an empty --root: exit 3, the pointer listed "
           "'UNRESOLVED: NOTES.md/old.md in section ## Notes', no 'CANNOT TELL: '",
           rp.returncode == 3 and prefixed(rp.stdout, "UNRESOLVED: NOTES.md/old.md in section ## Notes")
@@ -746,7 +751,7 @@ python3 tool.py --flag
     write(os.path.join(hd, "NOTES.md"), "# Notes\n\nNotes body text.\n")
     rr = subprocess.run([sys.executable, os.path.join(HERE, "rotate.py"), hp, "--convention", "section",
                          "--cut-date", "2026-06-01", "--today", "2026-10-08", "--root", folder()],
-                        capture_output=True, text=True)
+                        capture_output=True, text=True, encoding="utf-8", errors="replace")
     plines = [l for l in rr.stdout.splitlines() if l.startswith("POINTERS: ")]
     check("H2 rotate.py dry run with the pointer in a KEPT section and an empty --root: exit 0, the pointer "
           "counted unresolved on the 'POINTERS: ' line and listed '  UNRESOLVED: NOTES.md/old.md in section "
