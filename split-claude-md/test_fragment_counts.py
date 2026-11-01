@@ -19,9 +19,10 @@ Run:  python3 test_fragment_counts.py
 import io
 import sys
 # Read and write UTF-8 on every OS: the Windows default code page misreads it.
-for _stream in (sys.stdin, sys.stdout, sys.stderr):
-    if hasattr(_stream, "reconfigure"):
-        _stream.reconfigure(encoding="utf-8", errors="replace")
+if __name__ == "__main__":
+    for _stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
 import json
 import os
 import re
