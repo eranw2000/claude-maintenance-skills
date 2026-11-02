@@ -63,7 +63,9 @@ import os
 import re
 import shlex
 import shutil
+import subprocess
 import sys
+import tempfile
 from collections import OrderedDict, namedtuple
 from datetime import date
 
@@ -384,6 +386,50 @@ def kchars(n):
     return "%dK" % ((n + 500) // 1000)
 
 
+def run_start(path, today, current):
+    """The size this run started from, and where that figure came from.
+
+    rotate.py runs after the hoist, which makes the file on disk bigger than
+    the run's real start, so the session's first backup is the start (A3 names
+    it with today's compact date; the highest -N is the newest run of the day).
+    rotate.py's own backups carry the dashed date, are taken after the hoist,
+    and are never read here. With no such backup, the file as it stands is the
+    start: returns (chars, None)."""
+    base = f"{path}.backup-before-split-{today.replace('-', '')}"
+    found, n = None, 2
+    if splitlib.exists(base):
+        found = base
+    while splitlib.exists(f"{base}-{n}"):
+        found, n = f"{base}-{n}", n + 1
+    if found:
+        return len(read_text(found)), os.path.basename(found)
+    return len(current), None
+
+
+def floor_line(final_text, survey_path=None):
+    """One line stating survey.py's estimate of how low the run's result can go.
+
+    The figure the person is told at the approval. A survey that gives no estimate is a stated third answer and never
+    stops the run: this is information, not a check. A disk error rises, as in
+    the rest of this file."""
+    survey = survey_path or os.path.join(os.path.dirname(os.path.abspath(__file__)), "survey.py")
+    head = "how low this file can go (survey.py on the result, a rough guess at a flat retention, never a limit)"
+    with tempfile.TemporaryDirectory(prefix="split-floor-") as t:
+        f = os.path.join(t, "CLAUDE.md")
+        with open(f, "w", encoding="utf-8", newline="") as fh:
+            fh.write(final_text)
+        try:
+            out = subprocess.run([sys.executable, survey, f, "--keep-days", "30"], capture_output=True,
+                                 text=True, encoding="utf-8", timeout=120).stdout
+        except subprocess.TimeoutExpired:
+            out = ""
+    est = re.findall(r"^  ESTIMATE(?: AFTER PHASE E)?\s+~(\d+) ch", out, re.M)
+    if len(est) != 2:
+        return f"{head}: cannot tell, survey.py gave no estimate"
+    return (f"{head}: about {est[0]} chars with evidence moved out, about {est[1]} chars with "
+            "file-triggered rules scoped too. Quote these when you tell the person how low it can go.")
+
+
 def last_run_slot(lines, convention):
     """Placement, first match wins: (1) an existing Last-run
     line outside every record span is replaced; (2) the line after a '## ' or
@@ -523,7 +569,9 @@ def report_text(mode, ctx):
     out += ["## Summary", "",
             "- file: %s" % c["path"],
             "- convention %s, cut date %s, today %s" % (c["convention"], c["cut"], c["today"]),
-            "- chars before %d, after %d (without the Last-run line)" % (c["before_chars"], c["after_chars"]),
+            "- chars before %d%s, after %d (without the Last-run line)"
+            % (c["before_chars"], " (from %s)" % c["start_from"] if c["start_from"] else "", c["after_chars"]),
+            "- " + c["floor"],
             "- records: %d dated, %d move, %d keep" % (c["n_records"], len(c["to_move"]), len(c["to_keep"])),
             "- run folder: %s" % c["run_name"],
             "- verdict: %s" % c["verdict"],
@@ -1173,7 +1221,8 @@ def before_manifest(args, left):
     run_dir = os.path.join(d, run_name)
     index_path = os.path.join(d, INDEX_NAME)
     try:
-        fin = build_final(lines, d, to_move, args.convention, args.today, len(original), run_name)
+        start_chars, start_from = run_start(path, args.today, original)
+        fin = build_final(lines, d, to_move, args.convention, args.today, start_chars, run_name)
     except (OSError, UnicodeDecodeError) as e:
         return cannot_tell("%s is unreadable (%s); nothing was changed"
                            % (err_name(e, "an archive or the index"), type(e).__name__))
@@ -1302,7 +1351,8 @@ def before_manifest(args, left):
            "unresolved": unresolved, "n_pointers": len(ptrs), "anyway": anyway,
            "narrative": narrative, "hits_of": dict(ow), "backups": None,
            "drafts": drafts, "missing_rules": missing_rules, "nar_let": nar_let,
-           "nar_label": nar_label, "pred": pred}
+           "nar_label": nar_label, "pred": pred, "start_from": start_from,
+           "floor": floor_line(fin.final_text)}
 
     def write_dry(mode):
         """Step 3: REPORT.dry.md. A failure rises to the boundary, which names
@@ -1320,6 +1370,7 @@ def before_manifest(args, left):
               % (pred[0], len(pred[1])))
         for f in pred[1]:
             print("  PREDICTED " + f)
+        print("\n" + ctx["floor"])
         if write_dry("dry run"):
             return 2
         # A dry run whose --apply would refuse is a finding, not a pass: exit 3,

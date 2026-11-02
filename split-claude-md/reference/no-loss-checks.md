@@ -109,8 +109,11 @@ A rule-holding Phase A run goes in this order:
    The approval includes the FRAGMENT CHECK line. Do not run `--apply` while
    the FRAGMENT CHECK line names a failure; stop and show the person the named
    record. A predicted failure means `--apply` will write every file and then
-   exit 2 with an undo to run.
-4. Hoist: paste the Rules draft lines that must stay into CLAUDE.md above the
+   exit 2 with an undo to run. When you tell the person how low the file can go,
+   quote the report's `how low this file can go` line, and call it the rough guess
+   it is.
+4. Hoist (after the first backup, which is where `rotate.py` reads the run's
+   starting size): paste the Rules draft lines that must stay into CLAUDE.md above the
    moving records, or into a `--hoisted` file. A draft line is a whole
    paragraph, list item, table row or heading; paste it whole, or cut its story
    sentences but keep each rule sentence whole, since the refusal checks each
