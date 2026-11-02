@@ -64,7 +64,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import splitlib  # noqa: E402
-from rotate import backup  # noqa: E402
+from rotate import backup, kchars  # noqa: E402
 
 INDEX = "CLAUDE_DECISIONS_INDEX.md"
 CUT_KEYS = {"heading", "prefix", "mode", "archive", "drops", "allow_rule_edit"}
@@ -395,6 +395,27 @@ def after_checks(cm_text, writes, cm, accepts, roots):
     return lines
 
 
+def refresh_run_sizes(writes, cm, today):
+    """Rewrite the end size in today's Last-run line and Runs row: rotate.py wrote
+    them before this cut, so they went out of date the moment it was planned.
+    Another day's line or row is history, and a fenced example is neither."""
+    text = writes[cm]
+    lines = text.splitlines(True)
+    fenced = splitlib.fence_states(lines)[0]
+    head = "%s %s, " % (splitlib.LAST_RUN_PREFIX, today)
+    slots = [i for i, ln in enumerate(lines) if not fenced[i] and ln.startswith(head)]
+    if len(slots) != 1:
+        return writes
+    after = len("".join(ln for i, ln in enumerate(lines) if i != slots[0]))
+    lines[slots[0]] = re.sub(r" to \d+K chars,", " to %s chars," % kchars(after), lines[slots[0]], count=1)
+    writes[cm] = "".join(lines)
+    idx = os.path.join(os.path.dirname(cm), INDEX)
+    if idx in writes:
+        writes[idx] = re.sub(r"^(\| %s \| \d+ \| )\d+( \|)" % re.escape(today),
+                             lambda m: "%s%d%s" % (m.group(1), after, m.group(2)), writes[idx], flags=re.M)
+    return writes
+
+
 def write_all(writes, cm, today, no_backup):
     """Back up, then write every archive and the index, CLAUDE.md last. Each
     write goes to a temp file and is renamed over the target."""
@@ -431,6 +452,7 @@ def main(argv=None):
         text = read(cm)
         writes, s = plan(text, cuts, pointer, cm, args.today)
         checked = after_checks(text, writes, cm, args.accept, roots)
+        writes = refresh_run_sizes(writes, cm, args.today)
     except CannotTell as e:
         print("CANNOT TELL: %s. Exit 2: nothing was written." % e)
         return 2
