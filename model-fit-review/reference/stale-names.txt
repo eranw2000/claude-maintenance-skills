@@ -1,0 +1,13 @@
+# One regex per line, case-insensitive. Model names and tools that no longer exist or no
+# longer route. Update this list at the start of every run: a name is stale once the
+# live default moved past it (read the Codex setup for Codex, the Anthropic model list for
+# Claude). A name still real somewhere stays off (TodoWrite, while a third-party skill or a
+# parser of tool calls still uses it); a reader judges those in context.
+\bopus 4\.\d\b
+\bsonnet 4\.\d\b
+\bhaiku 4\.\d\b
+\bclaude-3[\w.-]*
+\bgpt-5(?:\.\d+)?(?:-\w+)?\b
+\bgpt-4o\b
+\bo3\b
+\bo4-mini\b

@@ -1,0 +1,34 @@
+# What lab_guidance.py reads. One line each: kind | lab | value.
+#
+# start   a page the user named as a starting point. Both are lists of links with no writing advice
+#         of their own, so they are read for the links they carry. OpenAI's address is the text
+#         version of https://developers.openai.com/learn, which that page points to.
+# page    a page that holds the advice itself.
+# expect  text that must be in the address of some page read for that lab. Finding none means a
+#         guide went away or the follow lines went blind, and the run stops. There is one for each
+#         model the harness runs, so losing one guide is seen. When a routing tier moves to a new
+#         model, change its line here, as with stale-names.txt.
+# audience  whose models a lab's advice is about: `claude`, or `codex` for what Codex runs.
+# follow  a link on a read page is fetched when it matches this regex...
+# skip    ...and matches no skip regex. Image, video and voice guides have nothing to say about
+#         skills or agents. The o-series guide covers models the harness does not run.
+#
+# To add a lab: add its start and page lines, an expect line and an audience line. Only hosts
+# named on a start or page line are fetched.
+
+start  | anthropic | https://platform.claude.com/docs/en/about-claude/use-case-guides/overview.md
+page   | anthropic | https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices.md
+expect | anthropic | prompting-claude-fable-5-1
+expect | anthropic | prompting-claude-opus-5-5
+expect | anthropic | prompting-claude-sonnet-5-5
+audience | anthropic | claude
+
+start  | openai    | https://developers.openai.com/learn/llms-full.txt
+page   | openai    | https://developers.openai.com/api/docs/guides/latest-model.md
+page   | openai    | https://developers.openai.com/api/docs/guides/reasoning-best-practices.md
+expect | openai    | latest-model
+expect | openai    | codex_prompting_guide
+audience | openai  | codex
+
+follow | *         | prompting|latest-model
+skip   | *         | image|sora|realtime|o-series
