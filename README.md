@@ -1,6 +1,6 @@
 # Claude Code maintenance skills
 
-Six Claude Code skills and one hook for keeping a project's knowledge and your Claude Code setup healthy over time: orient yourself when you come back to a project, keep its `CLAUDE.md` from bloating, recover anything useful left behind in old session transcripts, turn a helper script Claude wrote into a permanent tool of a skill, improve the development workflow when something slipped past it, compare one of your skills with somebody else's, and save a session before it goes idle or grows too large.
+Seven Claude Code skills and one hook for keeping a project's knowledge and your Claude Code setup healthy over time: orient yourself when you come back to a project, keep its `CLAUDE.md` from bloating, recover anything useful left behind in old session transcripts, turn a helper script Claude wrote into a permanent tool of a skill, improve the development workflow when something slipped past it, compare one of your skills with somebody else's, review your setup against the models you run today, and save a session before it goes idle or grows too large.
 
 Each skill is a self-contained directory (a `SKILL.md`). Claude can invoke one when its description matches what you are doing, or you can ask for it by name. The hook is a single script under `hooks/`.
 
@@ -18,6 +18,7 @@ Source: [docs/maintenance-flow.drawio](docs/maintenance-flow.drawio) (editable i
 - **`save-script-to-skill`**: after a skill run where Claude wrote a helper script to finish the job, moves that script into the skill's `scripts/` folder and rewrites the skill's `SKILL.md` so the next run executes the file instead of writing it again. Ships `find_session_scripts.py`, which reads the session transcript to find the skill invoked last and every script written or run after it. It makes the script reusable (arguments instead of session values, no secrets, clear exit codes), runs it once on the same input, and asks when more than one script could be the one.
 - **`improve-dev-workflow`**: the continuous-improvement loop for the development process itself. When something reached you or a reviewer that a skill, hook, agent or rule should have caught, it runs Observe, Diagnose, Verify, Learn and Improve: it reads the session transcript, lists each incident with quoted evidence, looks through four lenses (time lost finding things, checks that already exist, tool cost, missing access to a log or service), sorts each cause into one of four classes (process, missing context, weak rule, unreliable code), and fixes it in the smallest place that loads by itself next time. An improvement is done only when each fix has a check that runs and goes red on the miss (a hook, a test, or a replay of the original incident), or is recorded as words-only with the reason. Each step ends on a "Done when" line. `save-context` step 7 (in the multi-phase-skills-framework pack) asks at the end of a session whether to run it, so `close-session` reaches it too.
 - **`compare-skills`**: compares one of your skills, commands or agents with somebody else's on the same topic, feature by feature. It fetches theirs from a GitHub link or a path (with the files it depends on), reads both in full, writes one row per feature with an action for you to confirm (Enhance, Change, Keep mine, Nothing to do) and a note saying what the change would be, and saves the table as `COMPARISON.md`. A Google Sheet with a dropdown per row is optional. It recommends and never edits either skill.
+- **`model-fit-review`**: reviews every skill, agent and command under `~/.claude` for text written for older models that now costs a strong model: start gates that stop a run to ask, stale model names and dead tool references, the same sentence pasted many times, files long enough that a compaction drops the step that matters. A script measures the tree, a reader quotes what Anthropic and OpenAI recommend today from their own pages, seven parallel readers apply one rubric, every headline number is checked again, and the result is a report with your decisions first. It recommends and never edits. Use it when a new model family ships.
 
 ## The hook
 
@@ -42,6 +43,7 @@ cp -R claude-maintenance-skills/project-status \
       claude-maintenance-skills/save-script-to-skill \
       claude-maintenance-skills/improve-dev-workflow \
       claude-maintenance-skills/compare-skills \
+      claude-maintenance-skills/model-fit-review \
       ~/.claude/skills/
 ```
 
@@ -89,6 +91,8 @@ These skills assume the standard Claude Code layout: a per-project data director
 - A `COMMENTS.md` review file, read for unresolved blockers when one is present.
 
 `compare-skills` uses the GitHub CLI (`gh`) to fetch a skill from GitHub. Its optional Google Sheet needs `google-api-python-client` and `google-auth-oauthlib`, a desktop OAuth client from your own Google Cloud project with the Sheets API switched on, and a one-time sign-in with `compare-skills/scripts/mint_sheets_token.py`. The markdown table needs none of these.
+
+`model-fit-review` needs a Python with PyYAML (`pip install pyyaml`), `curl`, and network access to the Claude Code documentation and the Anthropic and OpenAI pages listed in `model-fit-review/reference/lab-sources.txt`. A run reads every file with parallel helper agents, about 2M tokens for seven readers over 1.5 MB, so it is a once-per-model-family job.
 
 The session-lifecycle skills that pair naturally with these (`save-context`, `close-session`, `todo`) live in the separate multi-phase-skills-framework pack, and the `new-session` command lives in the claude-commands pack, so they are not duplicated here. The `save-context` step 7 is what calls `improve-dev-workflow` at the end of a session, and its `rules/improve-dev-workflow.md` is the standing rule for when to run it mid-session.
 
