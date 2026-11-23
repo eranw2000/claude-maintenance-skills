@@ -22,7 +22,7 @@ Not every hiccup deserves the full loop.
 - **LIGHT (single incident, single artifact):** one lesson, one obvious home. Do Observe and
   Diagnose inline, fix the one artifact directly, add the Verify step for that artifact only,
   and record (memory, or the project CLAUDE.md as a 1-instance candidate). No
-  plan file needed, but step 5's rule applies here too: a check runs, or RULE-ONLY with its reason.
+  plan file needed, but step 5's rule applies here too: a check runs, or RULE-ONLY with its reason (read `~/.claude/skills/improve-dev-workflow/reference/5-check-that-runs.md`).
 - **FULL (repeated failures, cross-cutting, or the fix spans artifacts):** the whole loop
   below, ending in a plan file + plan-gate before implementation.
 - **Promotion rule:** the FIRST occurrence of a failure mode is a recorded candidate; the
@@ -53,6 +53,11 @@ EARLIER. Rules:
   - **Tool economy**, when a call cost many tokens or minutes: name the cheaper path.
   - **Information access**, when the answer sat in a log or service the session could
     not reach: the fix is a way to read it.
+- **Efficiency pass**, when the user asks where a session wasted effort (`/improve-dev-workflow
+  efficiency`) and on every FULL run; a LIGHT run skips it. It counts the session, checks
+  twelve waste patterns against the work rules require, and ends on a top three or
+  `nothing worth changing`.
+  **Read `~/.claude/skills/improve-dev-workflow/reference/1-efficiency-pass.md` now, in full, and follow it. It is this pass's full text; the line above is only a summary and is not enough to act on.**
 
 Done when every incident has its three parts with quoted evidence and each lens has its line.
 
@@ -63,51 +68,9 @@ For each incident, name the gap in the PROCESS: "nothing checks X", "the hook ca
 "the rule exists but only in one project's CLAUDE.md". A diagnosis that blames attention
 ("I should have noticed") is not done: attention failures need structural nets.
 
-**Then CLASSIFY each incident's cause, before designing any fix.** Review
-what went wrong during this run and name which of four causes it was. Each one is fixed in a
-different kind of artifact, so the wrong class produces a fix that changes nothing.
+Classify each incident's cause (process, missing context, weak rule, unreliable code) before designing any fix, then fix it in the smallest durable place.
 
-- **Process.** The right information was available, but no step asked for it at that
-  moment: a step was missing, in the wrong order, or a route skipped it. Update the skill,
-  command or agent that owns the flow: add, move or re-point the step.
-- **Missing context.** The fact or rule existed, but it never reached the session when it was
-  needed: wrong file, not loaded at that point, memory not recalled, no pointer from the
-  artifact that was running. Move or point the context to where it loads at that moment (a
-  pointer in the running skill, a path-scoped rule, a hook that injects it). Do NOT write a
-  new rule: one already exists.
-  This covers access too: a fact in a system the session could not read needs a read route.
-- **Weak rule.** The rule was read and followed, and its wording still allowed the wrong
-  outcome: vague, a hole, an exception too wide, or not checkable. Rewrite it at its ONE
-  owner so the failure is excluded and checkable.
-- **Unreliable code.** A hook, script or tool gave a wrong answer, failed silently, or could
-  not fire. Fix the code test-first: a failing test that reproduces it, the fix, then a
-  mutation proof.
-
-Tell them apart with three questions, in order. Was the right information in front of the
-session at that moment? No: **missing context**. Yes, but no step made the session use it:
-**process**. Yes, and the session did what it said: **weak rule**. Any answer that came from
-a tool that was wrong: **unreliable code**. An incident can have two causes; name the primary
-one, fix it, and record the second.
-Before calling anything unreliable code, prove the tool failed: show the control should
-have made it fire. A wrong control looks exactly like a broken hook.
-
-Write the class next to each incident in the record (step 5), so the next improvement can count
-repeats by cause as well as by incident.
-
-Done when every incident has one primary cause class and the artifact that class points at.
-
-**Fix it in the SMALLEST DURABLE PLACE.** Smallest: the one artifact that
-was running when the miss happened, at the narrowest scope that still covers it. A step in
-the skill that was running beats a global rule, a sentence in an existing section beats a new
-section, and an existing owner beats a new file. Durable: it loads or runs by itself every
-time that moment comes again. A memory note that has to be recalled, or a line in a file the
-running artifact never reads, is not durable. When the smallest place and a durable place
-differ, durable wins.
-
-**Tiebreaker: context pressure.** The implementer carries the most, the
-reviewer the least (it gets a diff). A judgement rule checkable from a diff goes on the
-reviewer's checklist (code-reviewer, the review-round brief); a step that must happen
-before review stays in the running skill; a mechanical check goes in a hook or a test.
+**Read `~/.claude/skills/improve-dev-workflow/reference/2-classify-and-place.md` now, in full, and follow it. It is this step's full text; the line above is only a summary and is not enough to act on.**
 
 **Then return to the same task and verify the fix.** Re-run the original task, from the same
 entry point with the same input, and confirm the miss no longer happens. This is the
@@ -143,15 +106,9 @@ Done when each proposed fix names what it builds on, and links any open TODO it 
 
 ## 5. Improve: decide, design, gate, implement, prove
 
-- **Decisions are the user's, asked early** (AskUserQuestion, in parallel with any running
-  agents): scope, enforcement depth (deterministic hooks vs agent checklists vs both;
-  default to BOTH, the guard+net pattern), new artifact vs extending an existing one.
-  Hand the user the whole inventory first, worst first by what each miss cost and how often.
-- **Artifact-type selection:** auto-trigger on a tool event = hook; isolated one-shot
-  judgment report = agent; interactive multi-step workflow = skill; a behavior rule =
-  CLAUDE.md (a pointer to a separate file when the detail is large); an observational fact
-  = memory. Every new skill, agent or command gets a `model:` choice that follows your
-  model-routing rule, recorded in the same change.
+- **Decisions are asked early, and the trigger picks the artifact type:** hand over the whole inventory first, then ask scope, enforcement depth, and new artifact or existing one.
+
+**Read `~/.claude/skills/improve-dev-workflow/reference/5-decisions-and-artifact-type.md` now, in full, and follow it. It is this step's full text; the line above is only a summary and is not enough to act on.**
 - **Writing for agents:** when a fix edits a skill, rule, agent, command or CLAUDE.md,
   read `~/.claude/skills/improve-dev-workflow/reference/agent-writing-checklist.md` and apply it to the added lines.
 - **FULL path:** write the plan file (failure inventory, audit findings, decisions, file-by-file
@@ -162,19 +119,9 @@ Done when each proposed fix names what it builds on, and links any open TODO it 
   assertions, population guards fed by the consumer's own enumerator, regression replay
   for edited agents, and re-enacting the original incident against the ORIGINAL artifact.
   **Read `~/.claude/skills/improve-dev-workflow/reference/5-binding-conventions.md` now, in full, and follow it. It is this step's full text; the line above is only a summary and is not enough to act on.**
-- **An improvement is done only when each fix has a CHECK THAT RUNS, or is recorded as RULE-ONLY
-  with its reason.** Each incident's fix adds at least one thing that runs by itself and
-  goes red on this miss: a hook, a test, or a replay case (the original incident run
-  through `claude -p`, its answer judged by a script). Words alone do not count: a
-  CLAUDE.md line, a skill sentence or a memory is a fix that has to be remembered, and
-  misses that recur are usually the ones fixed only in words. A weak-rule or process miss is
-  usually a replay case: replay the original incident through `claude -p` and judge the
-  answer by script, and read a FAIL's answer before
-  trusting the judge. **Only when nothing runnable can catch it** (no past input to replay,
-  and the miss is a judgment no script can score) is the fix **RULE-ONLY**: say so in the
-  record with the reason. That is the ONE way a words-only fix finishes, and it is counted as a
-  fix that cannot fire rather than a guard. The reason names why no input can be replayed or
-  scored; "a rule is enough" or "no time" is not a reason, and the improvement stays open.
+- **An improvement is done only when each fix has a CHECK THAT RUNS and goes red on this miss.** Words alone do not count. RULE-ONLY, with its reason, is allowed only when nothing runnable can catch the miss; "a rule is enough" or "no time" is not a reason.
+
+**Read `~/.claude/skills/improve-dev-workflow/reference/5-check-that-runs.md` now, in full, and follow it. It is this step's full text; the line above is only a summary and is not enough to act on.**
 - **Record:** write each incident with its cause class from step 2 (process, missing context,
   weak rule, unreliable code) and its `Check:` line (the hook, test file or eval case id that
   now goes red on the miss, or `RULE-ONLY: <why>`), then update the relevant CLAUDE.md,
