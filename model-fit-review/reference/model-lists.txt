@@ -1,0 +1,31 @@
+# What model_watch.py reads to notice a new model. One line each: kind | lab | value.
+#
+# list    a page that names the lab's models, then `|` and a regex that finds one model id on it.
+#         When the regex has a group, the group is the id; a trailing `.md` is dropped. A lab may
+#         have several list lines: its ids are the union, and the lab counts only when EVERY one
+#         of its pages was read and gave at least one id, so a page that failed today cannot make
+#         yesterday's models look new tomorrow. Pages are fetched like lab_guidance.py fetches:
+#         https only, no redirect followed, so name the address a redirect ends at.
+#         Match the WHOLE name: a pattern that stops early reads `example-model-2-mini` as
+#         the `example-model-2` already seen, and the new model is never told.
+# ignore  a regex tried on each id: one it matches is dropped. Write it to match whole name
+#         parts, `(?:^|-)word(?:-|$)`, so `omni` drops `gemini-omni-flash` but not
+#         `gemini-5-omnibus`. Image, voice, realtime, embedding and robotics models say nothing
+#         about how skills and agents should be written.
+#
+# Anthropic's list moved from about-claude/models/overview to models/overview (a 307); this is
+# where it ends. Its pattern takes the whole name (`claude-sonnet-5-5-mini` is its own model),
+# but never a `claude-` that follows a letter, digit or dash: on the saved page every model id
+# follows a backtick, a slash or a dot, while a link slug (`whats-new-claude-5-5`,
+# `migrating-to-claude-4`) puts a dash first. The script drops a trailing snapshot date; the
+# ignore lines drop guide slugs (no digit) and prose endings (`-based`, `-powered`). Google names
+# Gemini 4 Carbon only on its latest-model page, so both Google pages are read.
+
+list   | anthropic | https://platform.claude.com/docs/en/models/overview.md | (?<![a-z0-9-])claude-[a-z0-9.-]*[a-z0-9]
+ignore | anthropic | ^[a-z-]+$
+ignore | anthropic | -(?:based|powered|compatible)$
+list   | openai    | https://developers.openai.com/api/docs/models.md | gpt-[a-z0-9.-]*[a-z0-9]
+ignore | openai    | (?:^|-)(?:audio|image|live|realtime|transcribe|whisper|translate|tts|embedding|class)(?:-|$)
+list   | google    | https://aistudio.google.com/llms.txt | docs/models/(gemini-[a-z0-9.-]*[a-z0-9])
+list   | google    | https://aistudio.google.com/docs/latest-model.md | docs/models/(gemini-[a-z0-9.-]*[a-z0-9])
+ignore | google    | (?:^|-)(?:image|tts|live|embedding|robotics|omni|lyria|veo|imagen|nano|banana|audio|transcribe)(?:-|$)

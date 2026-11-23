@@ -2,10 +2,11 @@
 """Read what the AI labs recommend today, and check what a reader quoted from it.
 
     lab_guidance.py fetch --sources reference/lab-sources.txt --out "$OUT/lab"
-    lab_guidance.py check --lab-dir "$OUT/lab" --advice "$OUT/LAB_ADVICE.md" [--report "$OUT/REPORT.md"]
+    lab_guidance.py check --lab-dir "$OUT/lab" --advice "$OUT/LAB_ADVICE.md" --models-file "$OUT/models.txt" [--report "$OUT/REPORT.md"]
 
 fetch downloads each listed page and each page they link to that matches a `follow` line and no
-`skip` line, on the hosts of the listed pages only, saves the text, and writes index.json.
+`skip` line, on the hosts of the listed pages only, saves the text, and writes index.json. Each
+link a skip line drops is printed as SKIPPED and kept in index.json, so a skip leaves a trace.
 The labs serve markdown when `.md` is added to a page address (OpenAI: "Markdown versions of
 documentation pages are available by appending `.md` to the page URL", latest-model.md;
 Anthropic's pages answer the same way), so a link is read that way.
@@ -14,10 +15,15 @@ it); 2 a lab has no page at all, or an `expect` line found nothing, which means 
 and the follow lines went blind.
 
 check reads LAB_ADVICE.md. Exit 0 every number is used once, every quote is on its saved page,
-every item names that page's lab and audience, and every saved page was used or has a `no advice:`
-or `not read:` line. With --report, every number also starts a line of the report that carries its
-real quote and one outcome, and every `not read:` page is named there. 1 lists what failed. 2 means
-there was nothing to check, which can never pass.
+every item names that page's lab and audience, every saved page was used or has a `no advice:`
+or `not read:` line, and every item from a page whose audience is `claude` has a `models:` line
+that is exactly `all current Claude models` or a comma list of names from --models-file, each
+named on the item's own page. With --report, every number also starts a line of the report that
+carries its real quote and one outcome, and every `not read:` page is named there. 1 lists what
+failed. 2 means there was nothing to check, or no usable models file, which can never pass.
+
+The models file has one `pin | Claude model name` line per pin, written once per run from the
+transcripts, in the form the lab pages use ("Claude Opus 5.5"). fill_rubric.py reads it too.
 """
 from __future__ import annotations
 
@@ -43,6 +49,58 @@ REPORT_ID = re.compile(r"^[ \t>*#-]*(A\d+)\b", re.M)
 REPORT_HEADING = re.compile(r"^#", re.M)
 OUTCOME = re.compile(r"\b(FOLLOWED|DIFFERS|ADD|NOT FOR US)\b")
 CURLY = {0x2018: "'", 0x2019: "'", 0x201c: '"', 0x201d: '"'}
+ALL_CLAUDE = "all current claude models"
+
+
+def read_model_pins(path):
+    """[(pin, Claude model name)] from a models file, in order. A line it cannot read refuses."""
+    pins = []
+    with open(path, encoding="utf-8") as fh:
+        for n, raw in enumerate(fh, 1):
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = [p.strip() for p in line.split("|")]
+            if len(parts) != 2 or not parts[0] or not parts[1]:
+                raise ValueError(f"line {n} is not `pin | model name`: {line!r}")
+            pins.append((parts[0], parts[1]))
+    if not pins:
+        raise ValueError("it holds no model name")
+    return pins
+
+
+def read_models(path):
+    """The distinct Claude model names of a models file, in order."""
+    names = []
+    for _, name in read_model_pins(path):
+        if name.lower() not in (x.lower() for x in names):
+            names.append(name)
+    return names
+
+
+def names_model(text, name):
+    """The text names this model as a whole name: "Claude Opus 5" is not found in "Claude Opus 5.5"."""
+    return re.search(r"(?<![\w.])" + re.escape(name) + r"(?![\w-]|\.\d)", text, re.I) is not None
+
+
+def model_problems(ident, line, models, page_text):
+    """What is wrong with a `claude` item's `models:` line; an empty list when nothing is."""
+    line = line.strip()
+    if line.lower() == ALL_CLAUDE:
+        return []
+    names = [x.strip() for x in line.split(",")]
+    if not line or not all(names):
+        return [f"{ident}: no usable `models:` line. Write `all current Claude models`, or names from the models file"]
+    known = {m.lower() for m in models}
+    unknown = [x for x in names if x.lower() not in known]
+    if unknown:
+        return [f"{ident}: `models:` names {', '.join(unknown)}, which is not `all current Claude models` and not a model "
+                f"the harness runs ({', '.join(models)}). Drop the item, unless the page ties the sentence to one of those "
+                f"models; a note goes in `means:`"]
+    if page_text is None:
+        return []
+    return [f"{ident}: the page does not name {x}, so that label is not the page's. Drop the item, or name the model "
+            f"the page ties it to" for x in names if not names_model(page_text, x)]
 
 
 def read_sources(path):
@@ -105,7 +163,7 @@ def crawl(src, out_dir, max_pages=MAX_PAGES):
     audience = dict(src["audience"])
     queue = [(lab, kind, url, "") for kind in ("start", "page") for lab, url in src[kind]]
     seen = {q[2] for q in queue}
-    pages, unread, other_host, taken = [], [], [], set()
+    pages, unread, other_host, skipped, taken = [], [], [], [], set()
     while queue:
         lab, role, url, found_on = queue.pop(0)
         if len(pages) >= max_pages:
@@ -129,16 +187,20 @@ def crawl(src, out_dir, max_pages=MAX_PAGES):
                       "file": name, "found_on": found_on,
                       "chars": len(body), "sha256": hashlib.sha256(body.encode()).hexdigest()})
         for link in LINK.findall(body):
-            if not any(p.search(link) for p in follow) or any(p.search(link) for p in skip):
+            if not any(p.search(link) for p in follow):
                 continue
             target = normal_url(link, url)
+            if any(p.search(link) for p in skip):
+                if target not in skipped:
+                    skipped.append(target)
+                continue
             if urlsplit(target).hostname not in hosts:
                 if target not in other_host:
                     other_host.append(target)
             elif target not in seen:
                 seen.add(target)
                 queue.append((lab, "followed", target, url))
-    return pages, unread, other_host
+    return pages, unread, other_host, skipped
 
 
 def run_fetch(a):
@@ -152,16 +214,18 @@ def run_fetch(a):
         print("no pages listed")
         return 2
     os.makedirs(a.out, exist_ok=True)
-    pages, unread, other_host = crawl(src, a.out, a.max_pages)
+    pages, unread, other_host, skipped = crawl(src, a.out, a.max_pages)
     with open(os.path.join(a.out, "index.json"), "w", encoding="utf-8") as fh:
         json.dump({"pages": pages, "unread": [{"url": u, "why": w} for u, w in unread],
-                   "other_host": other_host}, fh, indent=1)
+                   "other_host": other_host, "skipped": skipped}, fh, indent=1)
     for p in pages:
         print(f"READ {p['lab']} {p['role']} {p['chars']} chars {p['file']} {p['url']}")
     for u, w in unread:
         print(f"NOT READ {u}: {w}")
     for u in other_host:
         print(f"OTHER HOST, not followed {u}")
+    for u in skipped:
+        print(f"SKIPPED by a skip line {u}")
     dead = [lab for lab in labs if not any(p["lab"] == lab for p in pages)]
     blind = [f"{lab}: {text}" for lab, text in src["expect"]
              if not any(p["lab"] == lab and text in p["url"] for p in pages)]
@@ -206,6 +270,16 @@ def read_items(advice):
 
 
 def run_check(a):
+    # Refused here, never by argparse, so leaving the flag out or giving an empty list is a
+    # returned 2 that a caller and a test can read, not a crash.
+    if not a.models_file:
+        print("CANNOT CHECK: --models-file is required (the Claude models the harness runs)")
+        return 2
+    try:
+        models = read_models(a.models_file)
+    except (OSError, ValueError, TypeError) as exc:
+        print(f"CANNOT CHECK: the models file {a.models_file}: {type(exc).__name__}: {exc}")
+        return 2
     try:
         with open(os.path.join(a.lab_dir, "index.json"), encoding="utf-8") as fh:
             rows = {p["file"]: p for p in json.load(fh)["pages"]}
@@ -250,12 +324,16 @@ def run_check(a):
             if f.get("applies to") != rows[page].get("audience"):
                 bad.append(f"{ident}: `applies to` says {f.get('applies to')!r}, "
                            f"but this lab's models are {rows[page].get('audience')!r}")
+            page_text = None
+            if page in on_disk:
+                with open(os.path.join(a.lab_dir, page), encoding="utf-8") as fh:
+                    page_text = norm(fh.read())
             if len(quote.split()) < MIN_QUOTE_WORDS:
                 bad.append(f"{ident}: the quote is under {MIN_QUOTE_WORDS} words, so it proves nothing")
-            elif page in on_disk:
-                with open(os.path.join(a.lab_dir, page), encoding="utf-8") as fh:
-                    if not holds(norm(fh.read()), quote):
-                        bad.append(f"{ident}: the quote is not on {page}: {quote[:80]!r}")
+            elif page_text is not None and not holds(page_text, quote):
+                bad.append(f"{ident}: the quote is not on {page}: {quote[:80]!r}")
+            if rows[page].get("audience") == "claude":
+                bad += model_problems(ident, f.get("models", ""), models, page_text)
         if report is not None:
             found = blocks.get(ident, [])
             if not found:
@@ -271,6 +349,7 @@ def run_check(a):
             bad.append(f"{name}: the reader could not read it and the report does not say so")
     for line in bad:
         print(f"FAILED {line}")
+    print(f"Claude models the harness runs: {', '.join(models)}")
     print(f"{len(items)} advice items, {len(pages)} pages, {len(bad)} failed")
     return 1 if bad else 0
 
@@ -286,6 +365,7 @@ def main():
     c.add_argument("--lab-dir", required=True)
     c.add_argument("--advice", required=True)
     c.add_argument("--report")
+    c.add_argument("--models-file", help="one `pin | Claude model name` line per pin; required, run_check refuses without it")
     a = ap.parse_args()
     return run_fetch(a) if a.cmd == "fetch" else run_check(a)
 

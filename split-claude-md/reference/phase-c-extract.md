@@ -136,8 +136,9 @@ session FOLLOWS?
 skill directory, write a description whose trigger phrases are the words a
 session would actually use, and validate the frontmatter with skill-creator's
 `quick_validate.py` before finishing. An unquoted `: ` is invalid YAML, a `->`
-counts as an angle bracket, and a description past 1024 chars silently loses the
-trigger phrases at the end, which is exactly the half that makes it fire.
+counts as an angle bracket, and a description past 1,024 chars fails the validator.
+Claude Code truncates the listing at 1,536 chars of description plus `when_to_use`, which
+silently loses the trigger phrases at the end, exactly the half that makes it fire.
 
 **The cost, which is not zero.** Every model-invocable skill's description loads
 in every session. Ten small skills are worse than one good one. When a procedure

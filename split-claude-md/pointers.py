@@ -4,7 +4,8 @@
     pointers.py FILE [--root D ...] [--memory-dir D]
 
 A pointer is a backticked file name on a line that also says See, Evidence,
-Detail, same heading, pointer, lives in or moved to, plus every [[name]] link.
+Detail, same heading, pointer, lives in or moved to, plus a file name with a
+notes or code ending straight after "read" on any line, plus every [[name]] link.
 A file resolves against FILE's folder, then each --root (default: the home
 .claude folder, applied here and nowhere else), then the folders a backticked
 token ending in '/' names earlier in the same section. A 'same heading' pointer

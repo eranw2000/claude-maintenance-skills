@@ -1,24 +1,35 @@
 # What lab_guidance.py reads. One line each: kind | lab | value.
 #
-# start   a page the user named as a starting point. Both are lists of links with no writing advice
-#         of their own, so they are read for the links they carry. OpenAI's address is the text
-#         version of https://developers.openai.com/learn, which that page points to.
-# page    a page that holds the advice itself.
+# start   a page the user named as a starting point. Each is a list of links with no writing advice
+#         of its own, so it is read for the links it carries. OpenAI's address is the text
+#         version of https://developers.openai.com/learn, which that page points to. Google's is
+#         the index its docs point agents to (ai.google.dev/gemini-api/docs now redirects to
+#         aistudio.google.com, and the script does not follow a redirect, so the new host is named).
+# page    a page that holds the advice itself. Anthropic's Claude Code best-practices page is one:
+#         it is the product team's own list of old habits to drop, written for Claude Code.
 # expect  text that must be in the address of some page read for that lab. Finding none means a
 #         guide went away or the follow lines went blind, and the run stops. There is one for each
-#         model the harness runs, so losing one guide is seen. When a routing tier moves to a new
-#         model, change its line here, as with stale-names.txt.
-# audience  whose models a lab's advice is about: `claude`, or `codex` for what Codex runs.
+#         model the harness runs, so losing one guide is seen, and one for each listed page whose
+#         loss should stop the run rather than only be named. The text is matched anywhere in an
+#         address, so make it longer than any word another page's address also holds. When a
+#         routing tier moves to a new model, change its line here, as with stale-names.txt.
+# audience  whose models a lab's advice is about: `claude`, `codex` for what Codex runs, or
+#           `gemini` for text sent to a Gemini model.
 # follow  a link on a read page is fetched when it matches this regex...
 # skip    ...and matches no skip regex. Image, video and voice guides have nothing to say about
-#         skills or agents. The o-series guide covers models the harness does not run.
+#         skills or agents. The o-series guide covers models the harness does not run. A skip
+#         line is tried on the link as written on the page, before `.md` is added, so end a
+#         per-model pattern with `(\.md)?$` or it also drops the newer guide whose name it starts.
+#         Every skipped link is printed, and no skip line may match an expect line.
 #
 # To add a lab: add its start and page lines, an expect line and an audience line. Only hosts
 # named on a start or page line are fetched.
 
 start  | anthropic | https://platform.claude.com/docs/en/about-claude/use-case-guides/overview.md
 page   | anthropic | https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices.md
-expect | anthropic | prompting-claude-fable-5-1
+page   | anthropic | https://code.claude.com/docs/en/best-practices.md
+expect | anthropic | code.claude.com/docs/en/best-practices
+expect | anthropic | prompting-claude-fable-5-2
 expect | anthropic | prompting-claude-opus-5-5
 expect | anthropic | prompting-claude-sonnet-5-5
 audience | anthropic | claude
@@ -30,5 +41,11 @@ expect | openai    | latest-model
 expect | openai    | codex_prompting_guide
 audience | openai  | codex
 
-follow | *         | prompting|latest-model
+start  | google    | https://aistudio.google.com/llms.txt
+page   | google    | https://aistudio.google.com/docs/prompting-strategies.md
+page   | google    | https://aistudio.google.com/docs/latest-model.md
+expect | google    | latest-model
+audience | google  | gemini
+
+follow | *         | prompting|latest-model|whats-new-gemini
 skip   | *         | image|sora|realtime|o-series

@@ -61,6 +61,7 @@ if __name__ == "__main__":
             _stream.reconfigure(encoding="utf-8", errors="replace")
 import json
 import os
+import re
 import sys
 import time
 
@@ -69,7 +70,12 @@ STATE_DIR = os.path.join(HOME, ".claude", "hooks", ".session-idle")
 
 AUTOCLOSE_SECONDS = 50 * 60      # 50 minutes: save and stop
 EXPIRED_SECONDS = 60 * 60        # 60 minutes: refuse, start fresh
-PRUNE_AFTER_SECONDS = 7 * 24 * 3600
+# A stamp must outlive every session that can still come back, or another session's prune
+# makes it read as brand new and nothing refuses it. Claude Code docs, settings-reference,
+# cleanupPeriodDays: "a session you haven't
+# used for longer than the retention period no longer appears in the /resume picker", default
+# 30. Twice that leaves room; a longer setting there reopens this past 60 days.
+PRUNE_AFTER_SECONDS = 60 * 24 * 3600
 
 # Turn-end trigger. SIZE FIRST, TIME ONLY AS A BACKSTOP.
 #
@@ -110,6 +116,13 @@ SAVE_COMMANDS = ("/close-session", "/save-context")
 # block. The gap before it is the time that work ran, so it is proof the
 # session was BUSY, not idle, and blocking it would throw away the result.
 HARNESS_PROMPT_PREFIXES = ("<task-notification>",)
+
+# A helper agent's final report arrives the same way, framed as
+# <agent-message from="<id>"> with the report starting on the NEXT line. Only
+# that exact opening counts: the tag must start the prompt, carry a from= value,
+# and close the line. A prompt that merely mentions the tag, or puts its own
+# words on the tag's line, is still treated as a person typing.
+HARNESS_PROMPT_FRAME_RE = re.compile(r'\A<agent-message from="[^"\n]{1,200}">[ \t]*\n')
 
 # Prompts a timer submits: the cron job /keep-alive arms fires this exact text
 # every 30 minutes while work runs. After a sleep it can arrive past the hour,
@@ -287,7 +300,8 @@ def record_save_cli(args: list, now: float) -> int:
 def is_harness_prompt(prompt: str) -> bool:
     """True when the harness, not a person, submitted this prompt."""
     text = (prompt or "").strip()
-    return text.startswith(HARNESS_PROMPT_PREFIXES) or text in TIMED_PROMPTS
+    return (text.startswith(HARNESS_PROMPT_PREFIXES) or text in TIMED_PROMPTS
+            or HARNESS_PROMPT_FRAME_RE.match(text) is not None)
 
 
 def session_mode() -> str:
