@@ -44,12 +44,19 @@ from __future__ import annotations
 
 import argparse
 import datetime
-import fcntl
+import errno
 import importlib.util
 import json
 import os
 import re
 import sys
+import time
+
+try:
+    import fcntl
+except ImportError:  # Windows: no fcntl; msvcrt.locking holds a one-byte lock instead
+    fcntl = None
+    import msvcrt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_LISTS = os.path.join(HERE, "..", "reference", "model-lists.txt")
@@ -66,6 +73,8 @@ def acquire_lock(state_dir, wait=True):
     dies, so a killed run leaves nothing behind. Raises OSError when the folder is unusable."""
     os.makedirs(state_dir, exist_ok=True)
     fd = os.open(os.path.join(state_dir, LOCK_NAME), os.O_CREAT | os.O_RDWR, 0o600)
+    if fcntl is None:
+        return _windows_lock(fd, wait)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX if wait else fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
@@ -74,8 +83,33 @@ def acquire_lock(state_dir, wait=True):
     return fd
 
 
+def _windows_lock(fd, wait):
+    """Lock byte 0 of the lock file. Microsoft's _locking page: EACCES is "Locking violation
+    (file already locked or unlocked)", and regions "should be unlocked before closing a file
+    or exiting the program", so release_lock unlocks first. Any other error is raised."""
+    while True:
+        os.lseek(fd, 0, os.SEEK_SET)
+        try:
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+            return fd
+        except OSError as e:
+            if e.errno != errno.EACCES:
+                os.close(fd)
+                raise
+            if not wait:
+                os.close(fd)
+                return None
+            time.sleep(0.2)
+
+
 def release_lock(fd):
     if fd is not None:
+        if fcntl is None:
+            try:
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+            except OSError:
+                pass
         try:
             os.close(fd)
         except OSError:
