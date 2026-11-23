@@ -677,6 +677,13 @@ MEMORY_LINK_RE = re.compile(r"\[\[([^\[\]\n]+)\]\]")
 FILE_LINE_RE = re.compile(r":\d[\d,\-]*$")
 FILE_TOKEN_RE = re.compile(r"^[^\s<>*?{}$|]+\.[A-Za-z][A-Za-z0-9]{0,9}$")
 SAME_HEADING_RE = re.compile(r"\bsame heading\b", re.IGNORECASE)
+# A backticked file with a notes or code ending straight after "read" is a pointer
+# on any line ("read `X.md` in this folder"). The line words in POINTER_WORD_RE miss
+# this, the commonest pointer wording in these files; a plain "read" would flag code
+# names and repo files that are not pointers.
+READ_TARGET_RE = re.compile(
+    r"\bread\s+`([^`\n]+\.(?:md|py|sh|json|jsonl|txt|toml|ya?ml|drawio|html|csv))`",
+    re.IGNORECASE)
 
 
 class Pointer(object):
@@ -736,7 +743,8 @@ def pointers(text, base, roots, memory_dir, present=None, cache=None):
     """Every pointer of `text` (a file in folder `base`), resolved.
 
     A pointer is a backticked file token on a line that also says See,
-    Evidence, Detail, same heading, pointer, lives in or moved to, plus every
+    Evidence, Detail, same heading, pointer, lives in or moved to, plus a file
+    token straight after "read" (READ_TARGET_RE) on any line, plus every
     [[name]]. A file resolves against, in order: `base`, each of `roots`, and
     the folders named by a backticked token ending in '/' earlier in the same
     section. A 'same heading' pointer also needs the nearest heading above it
@@ -820,13 +828,14 @@ def pointers(text, base, roots, memory_dir, present=None, cache=None):
                         p.why = "no %s.md in the memory folder" % name
                 found.append(p)
             pointer_line = bool(POINTER_WORD_RE.search(ln))
+            read_targets = set(READ_TARGET_RE.findall(ln))
             same = bool(SAME_HEADING_RE.search(ln))
             for tok in TOKEN_RE.findall(ln):
                 if tok.strip().endswith("/"):
                     folders.append(tok.strip())
                     continue
                 name = file_token(tok)
-                if not name or not pointer_line:
+                if not name or not (pointer_line or tok in read_targets):
                     continue
                 p = Pointer(key, lineno, "file", name, same)
                 cands = _places(name, real_base, roots)

@@ -1,6 +1,6 @@
 ---
 name: model-fit-review
-description: Review every skill, agent and command in ~/.claude for text written for weaker, older models that now costs a strong model (start gates that stop the run to ask, stale model names and dead tool references, the same sentence pasted dozens of times, dated war stories inside rules, files so long a compaction drops the step that matters). Measures the tree with a script, collects what Anthropic and OpenAI recommend today as checked quotes from their live pages, sends the files to seven parallel readers against one rubric, re-greps every headline claim, checks every artifact got a verdict, and writes a report with the decisions first. Recommends only, never edits. Use when a new Claude model family ships, or when the user says "review my skills for the new model", "do my agents still fit the new model", "are my rules crippling the model", "model-fit review", "re-run the harness review". Not for reviewing one skill against someone else's (compare-skills), and not for shrinking a CLAUDE.md (split-claude-md).
+description: Review every skill, agent and command in ~/.claude for text written for weaker, older models that now costs a strong model (start gates that stop the run to ask, stale model names and dead tool references, the same sentence pasted dozens of times, dated war stories inside rules, files so long a compaction drops the step that matters). Measures the tree with a script, collects what Anthropic, OpenAI and Google recommend today as checked quotes from their live pages, sends the files to seven parallel readers against one rubric, re-greps every headline claim, checks every artifact got a verdict, and writes a report with the decisions first. Recommends only, never edits. Use when a new model family ships, or when the user says "review my skills for the new model", "do my agents still fit the new model", "are my rules crippling the model", "model-fit review", "re-run the harness review". Not for reviewing one skill against someone else's (compare-skills), and not for shrinking a CLAUDE.md (split-claude-md).
 model: inherit
 argument-hint: "[root folder, default ~/.claude] [optional: 'measure only']"
 ---
@@ -57,6 +57,12 @@ page changed. Never type those numbers from memory.
 
 `P` and `OUT` do not carry to a new Bash call, so set them again in each command below.
 
+Then write `$OUT/models.txt`: one `pin | Claude model name` line per pin, in the form the lab
+pages use (`opus | Claude Opus 5.5`). Read each pin's model from the newest session transcripts
+(`.message.model`, so `claude-opus-5-5` is Claude Opus 5.5), never from a routing note, which may
+name only the family; `inherit` gets one line per model a session runs on. The lab check and the
+rubric both read this file, so the names are written once.
+
 Measure-only (`measure only` argument): run the fetch in step 1b as well, then stop, hand the user
 `inventory.txt` and `lab.txt`, and say what changed since the last run (runs are dated folders;
 diff the two `inventory.json`, and the `sha256` of each page in the two `lab/index.json`).
@@ -67,35 +73,41 @@ diff the two `inventory.json`, and the `sha256` of each page in the two `lab/ind
 $P ~/.claude/skills/model-fit-review/scripts/lab_guidance.py fetch --sources ~/.claude/skills/model-fit-review/reference/lab-sources.txt --out "$OUT/lab" > "$OUT/lab.txt"; echo "lab fetch exit $?"
 ```
 
-It starts from the two start pages in `reference/lab-sources.txt`, which are lists of links, and follows the prompting guides
+It starts from the start pages in `reference/lab-sources.txt` (one per lab: Anthropic, OpenAI, Google), which are lists of links, and follows the prompting guides
 they lead to. Exit 0 read every page; 1 some page was not read, so go on and name each one under
 "did not cover"; 2 stops the review, because a lab is missing or the guide for a model the harness
 runs was not found: say what it printed. When a routing tier moves to a new model, update its `expect`
-line in `reference/lab-sources.txt` first, as with `stale-names.txt`.
+line in `reference/lab-sources.txt` first, as with `stale-names.txt`. Each link a `skip` line drops is
+printed as SKIPPED, so a guide left out on purpose is on the record.
 
 Run one `general-purpose` Agent with `reference/lab-advice-brief.md` as the prompt, on the session
-model, before the readers. Expect about 110K tokens: the pages come to about 440K chars. Save its
-answer as `$OUT/LAB_ADVICE.md`, then:
+model, before the readers, and give it the path of `$OUT/models.txt`. The pages come to about 620K
+chars over 20 pages for the three labs (the fetch stops at 30; the skip lines leave out the guides
+for models nothing here runs), and the reader opens only the guides for models the harness runs,
+marking the rest `no advice`. Save its answer as `$OUT/LAB_ADVICE.md`, then:
 
 ```bash
-$P ~/.claude/skills/model-fit-review/scripts/lab_guidance.py check --lab-dir "$OUT/lab" --advice "$OUT/LAB_ADVICE.md"
+$P ~/.claude/skills/model-fit-review/scripts/lab_guidance.py check --lab-dir "$OUT/lab" --advice "$OUT/LAB_ADVICE.md" --models-file "$OUT/models.txt"
 ```
 
 Exit 1 lists each quote that is not on its page, each number used twice, each item naming the wrong
-lab or audience, and each page nobody accounted for: send those back to the reader, or drop the item
-when the sentence is not there. A page marked `not read:` is printed and allowed: the report names it. Exit 2 means nothing was collected,
-which can never pass. A lab's sentence is a reason to look, never a verdict.
+lab or audience, each page nobody accounted for, and each Claude item whose `models:` line is not a
+model in `models.txt` (or `all current Claude models`) that its page names: send the first four back
+to the reader, or drop the item when the sentence is not there; drop a model failure unless the page
+ties the sentence to a model on the list. A page marked `not read:` is printed and allowed: the report names it. Exit 2 means nothing was collected,
+or no usable `models.txt`, which can never pass. A lab's sentence is a reason to look, never a verdict.
 
 ## 2. Readers, seven in parallel
 
 Fill the rubric's four `<FILL: ...>` marks. `--tiers` is one sentence: the serving model you just
-read plus the model each pin (`opus`, `sonnet`, `inherit`) reaches in this setup; the script takes
+read plus any Codex or Gemini models the setup sends work to; the script adds each pin's
+Claude model from `models.txt`, takes
 the SIZE and DESCRIPTION sentences from `docs_caps.txt` and the path of `$OUT/LAB_ADVICE.md` itself.
 Then write `$OUT/families.json` from `reference/slicing.md` (family name to a list of skill folder
 names, paths or globs such as `agents/*`; a new skill joins its family) and cut the slices:
 
 ```bash
-$P ~/.claude/skills/model-fit-review/scripts/fill_rubric.py --out "$OUT" --tiers "<serving model; tier defaults>"
+$P ~/.claude/skills/model-fit-review/scripts/fill_rubric.py --out "$OUT" --tiers "<serving model; Codex and Gemini defaults>"
 $P ~/.claude/skills/model-fit-review/scripts/build_slices.py --out "$OUT" --families "$OUT/families.json" --extra <family>=skills/_shared/<note>.md
 ```
 
@@ -146,7 +158,7 @@ report and check it:
 
 ```bash
 $P ~/.claude/skills/model-fit-review/scripts/assemble_report.py --out "$OUT" --body "$OUT/REPORT_body.md" --outcomes "$OUT/outcomes.json"
-$P ~/.claude/skills/model-fit-review/scripts/lab_guidance.py check --lab-dir "$OUT/lab" --advice "$OUT/LAB_ADVICE.md" --report "$OUT/REPORT.md"
+$P ~/.claude/skills/model-fit-review/scripts/lab_guidance.py check --lab-dir "$OUT/lab" --advice "$OUT/LAB_ADVICE.md" --models-file "$OUT/models.txt" --report "$OUT/REPORT.md"
 ```
 
 `assemble_report.py` copies each quote from `LAB_ADVICE.md` (never retyped) and writes one verdict
@@ -159,6 +171,18 @@ and an outcome, and names each page the reader could not read.
 
 The report ends the skill. A fix plan and the edits are the user's call and follow the
 normal development flow: a plan, a branch, a review, then install.
+
+## 6. Knowing when to run it
+
+`scripts/model_watch.py check` reads each lab's model-list page named in
+`reference/model-lists.txt` (no model call), and prints `NEW <lab> <id>` for a model it has not
+seen before. The model then stays `PENDING`, printed on every check, until
+`scripts/model_watch.py ack <id> [<id> ...]` clears the models it names (it refuses with none),
+so a notice nobody read comes back. It records everything
+on its first run and says nothing, and a list page it can no longer read prints `BROKEN` (then
+`STILL-BROKEN`) on every check, never "nothing new". Exit 3 means there is something to tell.
+A new model is the moment for `measure only`; the full review stays a separate ask. At the end
+of a full review, run `ack` for the models it covered.
 
 ## Rules
 

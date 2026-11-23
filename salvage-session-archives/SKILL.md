@@ -69,14 +69,9 @@ If the subagent reports the section is essentially empty, that is a GOOD outcome
 This step exists because the subagent only sees what it was given and can miss subtle overlaps with existing prose. After the subagent returns:
 
 1. Grep the existing `CLAUDE.md` for each distinctive token from the new section (URLs, commands, log strings, file paths, numbers, function names).
-2. For each match, classify as:
-   - **Contradiction** — the new bullet says one thing and the existing prose says another. STOP and ask the user which is correct.
-   - **Near-verbatim duplicate** — the new bullet restates what's already documented. Remove the duplicate via Edit.
-   - **Rule-and-implementation pair** — the existing doc states a rule, the new bullet provides the implementation (e.g. shell snippet). Keep the implementation but trim the redundant rule sentence and add a short pointer back ("Implements the rule already noted in section X.").
-   - **Approximate vs precise** — existing says "~270", new says "271". Consistent; keep the precise number.
-   - **Truly new** — no overlap. Keep as-is.
+2. A contradiction (the new bullet says one thing, the existing prose another) stops the step: ask the user which is correct. Remove a near-verbatim duplicate via Edit. Keep everything else.
 
-Report counts: contradictions found, duplicates trimmed, rule/implementation pairs reconciled, items kept verbatim.
+Report counts: contradictions found, duplicates removed, items kept.
 
 ### 6. Present the findings to the user
 

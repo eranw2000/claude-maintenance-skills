@@ -342,6 +342,38 @@ def main():
     check("twin: --accept with a fragment of the sentence exits 0",
           rc == 0, "rc=%d %r" % (rc, out[-400:]))
 
+    # ---------------------------------------------------- "read `X.md`" pointers
+    # A "read `X.md`" line names a file the checker must resolve. A file named elsewhere on
+    # the line, and a code name after "read", are not pointers.
+    READ_LINES = (
+        "# P\n\n## Local tool: a viewer\n\n"
+        "**Before editing `tools/viewer.py`, `status.sh` or the status "
+        "badge, read `VIEWER_RULES.md` in this folder** (cache version, "
+        "transcript matching, launch-command tests).\n\n"
+        "## Evals\n\n"
+        "- **Before running, adding or judging an eval case "
+        "(`evals/cases/`), read `evals/RULES.md` in this "
+        "folder** (how runs are fenced, how the copy is built, how to judge a FAIL).\n\n"
+        "## Code names\n\n- Read `main.innerText` before scrolling, and read `window.scrollX` after.\n")
+    RULES_A, RULES_B = "VIEWER_RULES.md", "evals/RULES.md"
+    SIDE_A, SIDE_B = "status.sh", "tools/viewer.py"
+    f, d, root = one(READ_LINES)
+    rc, out, err = pt(f, "--root", root)
+    check("read: a missing file straight after 'read' is UNRESOLVED (exit 3)",
+          rc == 3 and unresolved(out, RULES_A)
+          and unresolved(out, RULES_B), "rc=%d %r" % (rc, out[-600:]))
+    check("read: a file on a 'read' line but NOT straight after it is not a pointer",
+          not unresolved(out, SIDE_A) and not unresolved(out, SIDE_B),
+          out[-600:])
+    check("read: a code name after 'read' (no file ending) is not a pointer",
+          not unresolved(out, "main.innerText") and not unresolved(out, "window.scrollX"),
+          out[-600:])
+    f, d, root = one(READ_LINES, {RULES_A: "# W\n",
+                                  RULES_B: "# H\n"})
+    rc, out, err = pt(f, "--root", root)
+    check("read twin: with both files present every pointer resolves (exit 0)",
+          rc == 0 and "HOLDS" in out, "rc=%d %r" % (rc, out[-600:]))
+
     # ---------------------------------------------------------------- tally shape
     import re as _re
     tally = _re.compile(r"\d+/\d+ passed")
