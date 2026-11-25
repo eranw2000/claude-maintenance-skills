@@ -230,7 +230,7 @@ def main():
 ## Kinds
 
 Links `https://example.invalid/a/b` and `0b1e2c3d-4a5b-6c7d-8e9f-0a1b2c3d4e5f`.
-Commit `a1b2c3d` and service `srv-q1w2e` and task `ta1234` and `WIDGET_TOKEN`.
+Commit `a1b2c3d` and service `srv-q1w2e` and task `ta0000` and `WIDGET_TOKEN`.
 Paths `skills/x/run.py` and `~/notes`; command `git status --short`; plain `build_widget_v2.py`.
 Short caps `ABC` stays out.
 
@@ -247,7 +247,7 @@ python3 tool.py --flag
     check("atom identifiers: URL, UUID, hash, service ids, UPPER_SNAKE",
           got.get("identifier") == {"https://example.invalid/a/b",
                                     "0b1e2c3d-4a5b-6c7d-8e9f-0a1b2c3d4e5f", "a1b2c3d",
-                                    "srv-q1w2e", "ta1234", "WIDGET_TOKEN"},
+                                    "srv-q1w2e", "ta0000", "WIDGET_TOKEN"},
           repr(got.get("identifier")))
     check("atom paths: a token holding / or starting with ~",
           got.get("path") == {"skills/x/run.py", "~/notes"}, repr(got.get("path")))
@@ -611,37 +611,37 @@ python3 tool.py --flag
           len(big) >= 160000 and dt < 10 and rc == 3, "len=%d dt=%.1f rc=%d" % (len(big), dt, rc))
 
     # ------------------------------------- atoms on token edges
-    w_before = ("# P\n\n## Notes\n\nCard `ta47` tracks the export.\n\n"
-                "See `ta4731` for the import.\n\nKeep logs in `~/data/logs/`.\n")
-    w_after = ("# P\n\n## Notes\n\nSee `ta4731` for the import.\n\n"
+    w_before = ("# P\n\n## Notes\n\nCard `ta00` tracks the export.\n\n"
+                "See `ta0000` for the import.\n\nKeep logs in `~/data/logs/`.\n")
+    w_after = ("# P\n\n## Notes\n\nSee `ta0000` for the import.\n\n"
                "Keep logs in `~/data/logs/app.log`.\n")
     d, b, a = project(w_before, w_after)
     rc, out, err = lc("--before", b, "--after", a)
     check("edges: an identifier and a path held in after only inside longer tokens read NOWHERE: "
-          "exit 3 with NOWHERE: ta47 and NOWHERE: ~/data/logs/",
-          rc == 3 and "NOWHERE: ta47" in out.splitlines() and "NOWHERE: ~/data/logs/" in out.splitlines(),
+          "exit 3 with NOWHERE: ta00 and NOWHERE: ~/data/logs/",
+          rc == 3 and "NOWHERE: ta00" in out.splitlines() and "NOWHERE: ~/data/logs/" in out.splitlines(),
           "rc=%d %r" % (rc, out[-500:]))
-    d, b, a = project(w_before, "# P\n\n## Notes\n\nCard `ta47` moved to the board.\n\n"
-                      "See `ta4731` for the import.\n\nLogs live in `~/data/logs/` now.\n")
+    d, b, a = project(w_before, "# P\n\n## Notes\n\nCard `ta00` moved to the board.\n\n"
+                      "See `ta0000` for the import.\n\nLogs live in `~/data/logs/` now.\n")
     rc, out, err = lc("--before", b, "--after", a)
     check("edges (a) the same atoms on edges in after (in backticks) are KEPT: exit 0, no NOWHERE line",
           rc == 0 and not prefixed(out, "NOWHERE: "), "rc=%d %r" % (rc, out[-400:]))
     oks = []
-    for tail in ("The card moved; it was ta47.", "We can see ta47, then the board."):
-        d, b, a = project(w_before, "# P\n\n## Notes\n\n" + tail + "\n\nSee `ta4731` for the import.\n\n"
+    for tail in ("The card moved; it was ta00.", "We can see ta00, then the board."):
+        d, b, a = project(w_before, "# P\n\n## Notes\n\n" + tail + "\n\nSee `ta0000` for the import.\n\n"
                           "Logs live in `~/data/logs/` now.\n")
         rc, out, err = lc("--before", b, "--after", a)
         oks.append((rc, prefixed(out, "NOWHERE: ")))
     check("edges (b) the atom as a bare word with '.' or ',' after it is KEPT: exit 0 both ways",
           oks == [(0, []), (0, [])], repr(oks))
-    d, b, a = project(w_before, "# P\n\n## Notes\n\nSee `ta4731` for the import.\n\n"
+    d, b, a = project(w_before, "# P\n\n## Notes\n\nSee `ta0000` for the import.\n\n"
                       "Logs live in `~/data/logs/` now.\n",
-                      {"NOTES.md": "# Notes\n\nCard `ta47` tracks the export.\n"})
+                      {"NOTES.md": "# Notes\n\nCard `ta00` tracks the export.\n"})
     rc, out, err = lc("--before", b, "--after", a)
     check("edges (c) the atom moved verbatim into a top-level note nothing points at, after holding "
           "only the longer token: LAZY-ONLY, exit 0, never NOWHERE",
-          rc == 0 and any(l.startswith("LAZY-ONLY: ta47") for l in out.splitlines())
-          and not any(l.startswith("NOWHERE: ta47") for l in out.splitlines()),
+          rc == 0 and any(l.startswith("LAZY-ONLY: ta00") for l in out.splitlines())
+          and not any(l.startswith("NOWHERE: ta00") for l in out.splitlines()),
           "rc=%d %r" % (rc, out[-400:]))
     fenced = "# P\n\n## Run\n\n```bash\npython3 tool.py --flag\n```\n"
     d, b, a = project(fenced, fenced + "\nA plain line added below the block.\n")
