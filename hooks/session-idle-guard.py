@@ -273,7 +273,7 @@ def record_save_cli(args: list, now: float) -> int:
 
     A save followed from save-context's SKILL.md (keep-alive does that on purpose,
     to keep the cache on one model) never makes a Skill call, so `saw_save_skill`
-    misses it and the next Stop forces a second save (ta6403). The save's last step
+    misses it and the next Stop forces a second save. The save's last step
     runs this. Refuses (exit 2) without a session id rather than stamp a guess."""
     opts = {}
     it = iter(args)

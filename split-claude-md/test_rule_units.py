@@ -681,9 +681,9 @@ def main():
     # ---------------------------------------------------------------- U13 (one edge test)
     edge_re = lambda tok, text: re.search(r"(?<![\w./-])" + re.escape(tok) + r"(?![\w/-]|\.\w)",
                                           text) is not None
-    toks = ["rm", "ta47", "~/data/logs/", "a.b", "x-y", "_u", "é"]
+    toks = ["rm", "ta00", "~/data/logs/", "a.b", "x-y", "_u", "é"]
     texts = ["", "rm", " rm ", "confirm", "rm.", "rm.x", "rm.\n", ".rm", "/rm", "-rm", "rm-", "rm/",
-             "rm_", "_rm", "(rm)", "`rm`", "rmrm rm", "xrm rm", "ta4731 ta47", "ta47.5 ta47,",
+             "rm_", "_rm", "(rm)", "`rm`", "rmrm rm", "xrm rm", "ta0000 ta00", "ta00.5 ta00,",
              "~/data/logs/app.log", "x ~/data/logs/", "a.bc a.b", "a.b.", "x-y-z x-y!", "__u _u",
              "éé é", "café é.", "rm\nrm", "line\nrm\nend", "rm" * 3 + " " + "rm"]
     bad = [(t, x) for t in toks for x in texts if bool(splitlib.on_edges(t, x)) != edge_re(t, x)]
